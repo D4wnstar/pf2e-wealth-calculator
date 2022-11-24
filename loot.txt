@@ -1,0 +1,22 @@
+Healing Potion (Minor),2
+Owlbear Claw,1
+Hand of the Mage,1
+Oil of Weightlessness,1
+Oil of Potency,1
+Everburning Torch,1
+Wondrous Figurine (Onyx Dog),6
++1 Warhammer,1
+Handwraps of Mighty Blows (+1),1
++1 Composite Longbow,1
+Staff of Fire,1
+Healing Potion (Lesser),1
+Healing Potion (Minor),2
+Savior Spike,1
+Feather Token (Holly Bush),2
+Sturdy Shield (Minor),1
+Retribution Axe,1
+Bracelet of Dashing,1
+Shrinking Potion,1
+Bloodseeker Beak,1
++1 Striking Glaive
+bracelets of Dashing,1
