@@ -1,2 +1,0 @@
-silver longsword low,1
-8 gp,1
