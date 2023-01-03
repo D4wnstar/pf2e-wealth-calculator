@@ -11,24 +11,37 @@ class Money:
 	cp: int = 0
 	sp: int = 0
 	gp: int = 0
+	origin: str = "item"
 
 	def __add__(self, val):
 		if type(val) == int:
 			return Money(self.cp + val, self.sp + val, self.gp + val)
 		elif type(val) == Money:
+			if not self.origin == val.origin:
+				raise ValueError("Origins don't match")
 			return Money(self.cp + val.cp, self.sp + val.sp, self.gp + val.gp)
 		else:
 			raise TypeError(f"Unsupported sum operation for type {type(val)} on class Money")
+	
+	def __radd__(self, val):
+		return self.__add__(val)
+
 
 def parse_database(item_name: str, amount: int, df: pd.DataFrame, materials: list, *,
-				   return_cat: bool=False) -> Money:
+				   return_cat: bool=False) -> Money | tuple[Money, str]:
 	"""Parses the passed DataFrame and returns the item's price."""
+
+	is_currency = get_price(item_name, amount)
+
+	if is_currency:
+		is_currency.origin = "currency"
+		return is_currency
+
 	material = False
 
 	# Check if the first one or two words denote a precious material
 	name_list = item_name.split(" ")
 	if name_list[0] in materials:
-		# print(f"Found {name_list[0]} in the list.")
 		material = name_list.pop(0)
 		grade = name_list.pop(-1)
 
@@ -43,7 +56,6 @@ def parse_database(item_name: str, amount: int, df: pd.DataFrame, materials: lis
 	else:
 		try:
 			if name_list[0] + " " + name_list[1] in materials:
-				# print(f"Found {name_list[0]} {name_list[1]} in the list.")
 				material = name_list[0] + " " + name_list[1]
 				del name_list[0:2]
 				grade = name_list.pop(-1)
@@ -95,6 +107,7 @@ def parse_database(item_name: str, amount: int, df: pd.DataFrame, materials: lis
 		else:
 			return price
 
+
 def rune_calculator(item_name, amount, df: pd.DataFrame, runelist: pd.DataFrame, rune_names: pd.DataFrame,
 					materials: pd.DataFrame) -> Money:
 	"""Automatically breaks down the item's name into singular runes and returns the total price as a Money object."""
@@ -143,23 +156,6 @@ def rune_calculator(item_name, amount, df: pd.DataFrame, runelist: pd.DataFrame,
 		if rune in ("lesser", "moderate", "greater", "major", "true"):
 			rune = f"{item_runes[cur_index + 1]} ({rune})"
 			del item_runes[cur_index + 1]
-
-		# match rune:
-		#     case "greater":
-		#         rune = item_runes[cur_index + 1] + " (greater)"
-		#         del item_runes[cur_index + 1]
-		#     case "major":
-		#         rune = item_runes[cur_index + 1] + " (major)"
-		#         del item_runes[cur_index + 1]
-		#     case "true":
-		#         rune = item_runes[cur_index + 1] + " (true)"
-		#         del item_runes[cur_index + 1]
-		#     case "lesser":
-		#         rune = item_runes[cur_index + 1] + " (lesser)"
-		#         del item_runes[cur_index + 1]
-		#     case "moderate":
-		#         rune = item_runes[cur_index + 1] + " (moderate)"
-		#         del item_runes[cur_index + 1]
 
 		# Check if the name needs to be replaced
 		rune_row = rune_names[rune_names["Name"] == rune]
@@ -211,7 +207,8 @@ def rune_calculator(item_name, amount, df: pd.DataFrame, runelist: pd.DataFrame,
 
 	return running_sum
 
-def get_price(price_str: str, amount: int, *, money: Money=None) -> Money | None:
+
+def get_price(price_str: str, amount: int, *, money: Money=None) -> Money | bool:
 	"""
 	Gets the price of the given item and optionally adds it to the given Money object.
 
@@ -219,7 +216,7 @@ def get_price(price_str: str, amount: int, *, money: Money=None) -> Money | None
 
 	amount is an integer that multiplies the price of the given item before adding it.
 
-	price_dict is a Money object.
+	money is a Money object.
 	"""
 
 	# Fetch price and coin type through regex
@@ -239,6 +236,8 @@ def get_price(price_str: str, amount: int, *, money: Money=None) -> Money | None
 				case "cp": money.cp += int(re.sub(",", "", item_price)) * amount # Regex is totally unnecessary but whatever lmao
 				case "sp": money.sp += int(re.sub(",", "", item_price)) * amount
 				case "gp": money.gp += int(re.sub(",", "", item_price)) * amount
+	else:
+		return False
 
 
 
@@ -265,16 +264,21 @@ if __name__ == "__main__":
 	loot["Amount"].replace("\D", 0, regex=True, inplace=True) # Uses regex to replace non-numeric values in the "Amount" column
 	loot["Amount"] = loot["Amount"].astype(int)
 
-	money = Money()
 
+	money = {
+		"item": Money(),
+		"currency": Money(origin="currency")
+	}
 
 
 	# Get the price for each item
 	for index, row in loot.iterrows():
 		if "+1" in row["Name"] or "+2" in row["Name"] or "+3" in row["Name"]: # Check if there is a fundamental rune in the item
-			money += rune_calculator(row.tolist()[0], row.tolist()[1], table, runes, rune_names, materials)
+			temp_money = rune_calculator(row.tolist()[0], row.tolist()[1], table, runes, rune_names, materials)
+			money[temp_money.origin] += temp_money
 		else:
-			money += parse_database(row.tolist()[0], row.tolist()[1], table, materials)
+			temp_money = parse_database(row.tolist()[0], row.tolist()[1], table, materials)
+			money[temp_money.origin] += temp_money
 
 	while True: # Ask for the party level
 		try:
@@ -316,33 +320,36 @@ if __name__ == "__main__":
 				if currency < 0:
 					print("Please only insert a positive number")
 				else:
-					money.gp += currency
+					money["currency"].gp += currency
 					break
 	else:
 		currency = 0
 
 	# Convert coins in gp where possible
-	money.gp += int(money.cp/100)
-	money.gp += int(money.sp/10)
-	money.cp %= 100
-	money.sp %= 10
+	for origin in money.keys():
+		money[origin].gp += int(money[origin].cp/100)
+		money[origin].gp += int(money[origin].sp/10)
+		money[origin].cp %= 100
+		money[origin].sp %= 10
+
+	money["total"] = sum(money.values())
 
 	print(f"""
 Total value (converted in gp):
-	{str(money.cp)} cp
-	{str(money.sp)} sp
-	{str(money.gp)} gp
+	{str(money["total"].cp)} cp
+	{str(money["total"].sp)} sp
+	{str(money["total"].gp)} gp
 
 Of which:
-	Items: {money.gp - currency} gp
-	Currency: {currency} gp
+	Items: {money["item"].gp} gp
+	Currency: {money["currency"].gp} gp
 """)
 
 	print("Difference:")
-	if total_value - money.gp < 0:
-		print(f"{abs(total_value - money.gp)} gp too much (Expected: {total_value} gp)")
-	elif total_value - money.gp > 0:
-		print(f"{abs(total_value - money.gp)} gp too little (Expected: {total_value} gp)")
+	if total_value - money["total"].gp < 0:
+		print(f"{abs(total_value - money['total'].gp)} gp too much (Expected: {total_value} gp)")
+	elif total_value - money["total"].gp > 0:
+		print(f"{abs(total_value - money['total'].gp)} gp too little (Expected: {total_value} gp)")
 	else:
 		print("None")
 
