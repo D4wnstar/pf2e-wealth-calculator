@@ -12,14 +12,15 @@ class Money:
 	sp: int = 0
 	gp: int = 0
 	origin: str = "item"
+	check_origin: bool = True
 
 	def __add__(self, val):
 		if type(val) == int:
-			return Money(self.cp + val, self.sp + val, self.gp + val)
+			return Money(self.cp + val, self.sp + val, self.gp + val, self.origin, self.check_origin)
 		elif type(val) == Money:
-			if not self.origin == val.origin:
+			if self.check_origin and self.origin != val.origin:
 				raise ValueError("Origins don't match")
-			return Money(self.cp + val.cp, self.sp + val.sp, self.gp + val.gp)
+			return Money(self.cp + val.cp, self.sp + val.sp, self.gp + val.gp, self.origin, self.check_origin)
 		else:
 			raise TypeError(f"Unsupported sum operation for type {type(val)} on class Money")
 	
@@ -27,15 +28,34 @@ class Money:
 		return self.__add__(val)
 
 
+# Helper function to allow a variable amount of return values
+def mask_list(list, mask):
+	res = []
+	for item, flag in zip(list, mask):
+		if flag:
+			res.append(item)
+	
+	if len(res) == 1:
+		return res[0]
+	else:
+		return res
+
 def parse_database(item_name: str, amount: int, df: pd.DataFrame, materials: list, *,
-				   return_cat: bool=False) -> Money | tuple[Money, str]:
-	"""Parses the passed DataFrame and returns the item's price."""
+				   price: bool=True, category: bool=False, level: bool=False, rarity: bool=False,
+				   quiet: bool=False) -> Money | str | int | list:
+	"""Parses the Archives of Nethys item list and returns information about the item."""
+
+	# Check if there is at least something to return
+	flags = [price, category, level, rarity]
+	if not any(flags):
+		raise ValueError("At least one flag argument must be True")
 
 	is_currency = get_price(item_name, amount)
 
+	# Check if it's plain currency, in which case short-circuit
 	if is_currency:
 		is_currency.origin = "currency"
-		return is_currency
+		return mask_list([is_currency, "Currency", -1, "None"], flags)
 
 	material = False
 
@@ -75,17 +95,18 @@ def parse_database(item_name: str, amount: int, df: pd.DataFrame, materials: lis
 
 	# If there is no item with the given name, find closest item to suggest and print a warning
 	if item_row.empty:
-		suggestion = "".join(get_close_matches(item_name.strip(), df["Name"].tolist(), 1, 0))
-		print(f'WARNING: Item "{item_name}" was not found in the database. Did you mean "{suggestion}"?')
-		return Money()
+		if not quiet:
+			suggestion = "".join(get_close_matches(item_name.strip(), df["Name"].tolist(), 1, 0))
+			print(f'WARNING: Ignoring item "{item_name}". Did you mean "{suggestion}"?')
+		return mask_list([Money(), "Error", -1, "None"], flags)
 
 	item_category = item_row["Category"].item()
-	# Add item price to the total
+	item_level = item_row["Level"].item()
+	item_rarity = item_row["Rarity"].item()
+
+	# Get item price
 	if not material:
-		if return_cat:
-			return (get_price(item_row["Price"].item(), amount), item_category)
-		else:
-			return get_price(item_row["Price"].item(), amount)
+		item_price = get_price(item_row["Price"].item(), amount)
 	else:
 		# Convert category to a code-legible string
 		categories = {
@@ -97,24 +118,23 @@ def parse_database(item_name: str, amount: int, df: pd.DataFrame, materials: lis
 		}
 
 		# Add the price of the precious material
-		price = get_price(df[df["Name"] == f"{material} {categories[item_category]} {grade}"]["Price"].item(), amount)
+		item_price = get_price(df[df["Name"] == f"{material} {categories[item_category]} {grade}"]["Price"].item(), amount)
 
 		# Add the price of the base item
-		price += get_price(item_row["Price"].item(), amount)
+		item_price += get_price(item_row["Price"].item(), amount)
 
-		if return_cat:
-			return (price, item_category)
-		else:
-			return price
 
+	return mask_list([item_price, item_category, item_level, item_rarity], flags)
+		
 
 def rune_calculator(item_name, amount, df: pd.DataFrame, runelist: pd.DataFrame, rune_names: pd.DataFrame,
-					materials: pd.DataFrame) -> Money:
+					materials: pd.DataFrame, *, price: bool=True, category: bool=False, level: bool=False,
+					rarity: bool=False) -> Money | str | int | list:
 	"""Automatically breaks down the item's name into singular runes and returns the total price as a Money object."""
 
-	# Helper function to make fundamental rune handling easier
+	# Helper function to make potency rune handling easier
 	def get_cached_rune_price(cached_rune: str, category: str) -> Money:
-		"Use the cached fundamental rune to add the appropriate price, depending on category"
+		"Use the cached potency rune to add the appropriate price, depending on category"
 
 		if category == "Weapons":
 			match cached_rune:
@@ -133,23 +153,24 @@ def rune_calculator(item_name, amount, df: pd.DataFrame, runelist: pd.DataFrame,
 
 	running_sum = Money()
 	item_runes = item_name.split() # Break up the name into single runes
-	rune_queue = "0"
+	potency_rune = "0"
 	cur_index = 0
 	breaker = False
+	flags = [price, category, level, rarity]
 
 	# Cycle through runes found in the item name
 	for cur_index, rune in enumerate(item_runes):
 		rune = rune.strip()
 
-		# Find fundamental rune and keep it in queue
+		# Find potency rune and cache it
 		if rune == "+1":
-			rune_queue = "+1"
+			potency_rune = "+1"
 			continue
 		elif rune == "+2":
-			rune_queue = "+2"
+			potency_rune = "+2"
 			continue
 		elif rune == "+3":
-			rune_queue = "+3"
+			potency_rune = "+3"
 			continue
 
 		# Handle rune prefixes manually
@@ -164,24 +185,31 @@ def rune_calculator(item_name, amount, df: pd.DataFrame, runelist: pd.DataFrame,
 			if rune == "":
 				continue
 
-		# Find the rune in the list of runes (if present)
-		item_row = runelist[runelist["Name"] == rune]
+		if rune not in materials:
+			# Find the rune in the list of runes (if present)
+			# item_row = runelist[runelist["Name"] == rune]
+			item_info = parse_database(rune, amount, runelist, materials, price=True, category=True, level=True, rarity=True, quiet=True)
 
-		# If it's not in the list of runes, check if it's another item
-		if item_row.empty:
-			item_row = df[df["Name"] == rune]
+			# If it's not in the list of runes, check if it's another item
+			# if item_row.empty:
+				# item_row = df[df["Name"] == rune]
+			if item_info[1] == "Error":
+				item_info = parse_database(rune, amount, df, materials, price=True, category=True, level=True, rarity=True, quiet=True)
+		else:
+			item_info = [0, "Error"]
 
 		# If it's again not in the list, it might just be a multi-word item name or a precious material
 		# It's guaranteed to not be a rune as it already checked in the rune list
-		if item_row.empty:
+		if item_info[1] == "Error":
 			new_rune = rune # Preserves original rune name to allow for proper error messages
 			increment = 1
 
 			while True:
 				try:
 					new_rune += " " + item_runes[cur_index + increment] # Iteratively append the following runes in the item name until it finds something
-					item_row = df[df["Name"] == new_rune]
-					if not item_row.empty: # If it finds something, continue with price calculation and finish loop
+					# item_row = df[df["Name"] == new_rune]
+					item_info = parse_database(new_rune, amount, df, materials, price=True, category=True, level=True, rarity=True, quiet=True)
+					if item_info[1] != "Error": # If it finds something, continue with price calculation and finish loop
 						breaker = True # Non-rune items must always be at the end of the name, thus it's guaranteed there's nothing left
 						break
 					increment += 1
@@ -189,22 +217,23 @@ def rune_calculator(item_name, amount, df: pd.DataFrame, runelist: pd.DataFrame,
 				# Once nothing is left, check database if it can find the item
 				# This is necessary to handle precious materials
 				except IndexError:
-					price, item_category = parse_database(new_rune, amount, df, materials, return_cat=True)
-					if price == Money():
+					if item_info[0] == Money():
 						print(f"WARNING: No results for {item_name}. Skipping price calculation.")
-						return Money()
+						return mask_list([Money(), "Error", -1, "None"], flags)
 					else:
-						running_sum += price
-						running_sum += get_cached_rune_price(rune_queue, item_category)
-						return running_sum
+						running_sum += item_info[0]
+						running_sum += get_cached_rune_price(potency_rune, item_info[1])
+						item_info[0] = running_sum
+						return mask_list(item_info, flags)
 
-		# Add fundamental rune price and base item price to the total
-		running_sum += get_cached_rune_price(rune_queue, item_row["Category"].item())
-		running_sum += get_price(item_row["Price"].item(), amount)
+		# Add rune/base item price to the total
+		running_sum += item_info[0]
 
 		if breaker:
 			break
 
+	# Add potency rune price
+	running_sum += get_cached_rune_price(potency_rune, item_info[1])
 	return running_sum
 
 
@@ -243,15 +272,15 @@ def get_price(price_str: str, amount: int, *, money: Money=None) -> Money | bool
 
 if __name__ == "__main__":
 	# Read the necessary files
-	table = pd.read_csv('./files/PF2eItemList.csv', dtype={'Level': int}) # List of all items
-	runes = pd.read_csv('./files/runes.csv') # List of just runes
-	rune_names = pd.read_csv('./files/rune_names.csv') # Rune name translation table
-	tbl = pd.read_csv('./files/treasurebylevel.csv') # Treasure by level table
-	with open('./files/materials.csv') as mats: # Precious materials
+	table = pd.read_csv('./pf2e_wealth_calculator/files/PF2eItemList.csv', dtype={'Level': int}) # List of all items
+	runes = pd.read_csv('./pf2e_wealth_calculator/files/runes.csv') # List of just runes
+	rune_names = pd.read_csv('./pf2e_wealth_calculator/files/rune_names.csv') # Rune name translation table
+	tbl = pd.read_csv('./pf2e_wealth_calculator/files/treasurebylevel.csv') # Treasure by level table
+	with open('./pf2e_wealth_calculator/files/materials.csv') as mats: # Precious materials
 		materials = mats.readlines()
 		materials = [mat.rstrip("\n") for mat in materials]
 
-	loot = pd.read_csv('loot.txt', names=["Name", "Amount"]) # User-defined loot
+	loot = pd.read_csv('./pf2e_wealth_calculator/loot.txt', names=["Name", "Amount"]) # User-defined loot
 
 	# Clean data
 	table["Name"] = table["Name"].apply(lambda name : name.lower()) # Make all names lowercase
@@ -332,7 +361,13 @@ if __name__ == "__main__":
 		money[origin].cp %= 100
 		money[origin].sp %= 10
 
-	money["total"] = sum(money.values())
+	def get_total(money_list):
+		res = Money(origin="Total", check_origin=False)
+		for item in money_list:
+			res += item
+		return res
+	
+	money["total"] = get_total(money.values())
 
 	print(f"""
 Total value (converted in gp):
@@ -351,13 +386,14 @@ Of which:
 	elif total_value - money["total"].gp > 0:
 		print(f"{abs(total_value - money['total'].gp)} gp too little (Expected: {total_value} gp)")
 	else:
-		print("None")
+		print(f"None (Expected: {total_value} gp)")
 
 # TODO
 # [DONE] Allow adding an arbitrary amount of gold for plain wealth
 # [DONE] Check what happens if you add a comma but no quantity (i.e. tindertwig, )
 # [DONE] Add support for dynamic rune price calculation (i.e. auto-calculate price of +1 striking keen warhammer). Maybe use that all items with runes must start with a +
 # [DONE] Add support for calculating wealth only for a specific (range of) level(s), instead of all of them up to the user input
+# Maybe change item_info type to dict or custom data structure
 # Print how many items of a given level, category and rarity there are
 
 # Known exceptions:
