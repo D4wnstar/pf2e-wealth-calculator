@@ -11,6 +11,8 @@ license = "GPL-3.0-or-later"
 python = "^3.10"
 pandas = "^1.5.2"
 
+[tool.poetry.scripts]
+pf2ewc = "pf2e_wealth_calculator:entry_point"
 
 [build-system]
 requires = ["poetry-core"]

@@ -3,6 +3,11 @@ import re
 from difflib import get_close_matches
 from dataclasses import dataclass
 
+import sys
+import os
+import argparse
+import textwrap
+
 @dataclass
 class Money:
 	"""
@@ -268,19 +273,18 @@ def get_price(price_str: str, amount: int, *, money: Money=None) -> Money | bool
 	else:
 		return False
 
-
-
-if __name__ == "__main__":
+def console_entry_point(input_file, level, currency):
 	# Read the necessary files
-	table = pd.read_csv('./pf2e_wealth_calculator/files/PF2eItemList.csv', dtype={'Level': int}) # List of all items
-	runes = pd.read_csv('./pf2e_wealth_calculator/files/runes.csv') # List of just runes
-	rune_names = pd.read_csv('./pf2e_wealth_calculator/files/rune_names.csv') # Rune name translation table
-	tbl = pd.read_csv('./pf2e_wealth_calculator/files/treasurebylevel.csv') # Treasure by level table
-	with open('./pf2e_wealth_calculator/files/materials.csv') as mats: # Precious materials
+	pathfinder = lambda path : os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
+	table = pd.read_csv(pathfinder("tables/PF2eItemList.csv"), dtype={'Level': int}) # List of all items
+	runes = pd.read_csv(pathfinder('tables/runes.csv')) # List of just runes
+	rune_names = pd.read_csv(pathfinder('tables/rune_names.csv')) # Rune name translation table
+	tbl = pd.read_csv(pathfinder('tables/treasurebylevel.csv')) # Treasure by level table
+	with open(pathfinder('tables/materials.csv')) as mats: # Precious materials
 		materials = mats.readlines()
 		materials = [mat.rstrip("\n") for mat in materials]
 
-	loot = pd.read_csv('./pf2e_wealth_calculator/loot.txt', names=["Name", "Amount"]) # User-defined loot
+	loot = pd.read_csv(input_file, names=["Name", "Amount"]) # User-defined loot
 
 	# Clean data
 	table["Name"] = table["Name"].apply(lambda name : name.lower()) # Make all names lowercase
@@ -301,7 +305,7 @@ if __name__ == "__main__":
 
 
 	# Get the price for each item
-	for index, row in loot.iterrows():
+	for _, row in loot.iterrows():
 		if "+1" in row["Name"] or "+2" in row["Name"] or "+3" in row["Name"]: # Check if there is a fundamental rune in the item
 			temp_money = rune_calculator(row.tolist()[0], row.tolist()[1], table, runes, rune_names, materials)
 			money[temp_money.origin] += temp_money
@@ -309,50 +313,89 @@ if __name__ == "__main__":
 			temp_money = parse_database(row.tolist()[0], row.tolist()[1], table, materials)
 			money[temp_money.origin] += temp_money
 
-	while True: # Ask for the party level
-		try:
-			level = input("Enter the party's level or a range of levels (e.g. 5-8): ")
-			split = level.split("-")
-			if [level] == split:
-				level = int(level)
-				level_range = False
-			else:
-				level = [int(x) for x in split]
-				level_range = True
-
-		except ValueError:
-			print("Please only insert an integer or a range with the syntax X-Y.")
-
-		else:
-			if level_range:
-				if 0 < level[0] <= 20 and 0 < level[1] <= 20:
-					total_value = tbl["Total Value"][min(level)-1:max(level)-1].sum() # Get total value from the TBL table
-					break
-				else:
-					print("Please only insert levels between 1 and 20")
-			else:
-				if 0 < level <= 20:
-					total_value = tbl.at[level - 1, "Total Value"] # Get total value from the TBL table
-					break
-				else:
-					print("Please only insert a level between 1 and 20")
-
-
-	choice = input("Do you want to add extra currency (in gp)? (y/[n]) ") # Ask to add extra plain currency
-	if choice == "y":
+	if level is None:
+		# If no level is passed, ask for it interactively
 		while True:
 			try:
-				currency = int(input("How much? "))
-			except ValueError:
-				print("Please only insert an integer")
-			else:
-				if currency < 0:
-					print("Please only insert a positive number")
+				level = input("Enter the party's level or a range of levels (e.g. 5-8): ")
+				split = level.split("-")
+				if [level] == split:
+					level = int(level)
+					level_range = False
 				else:
-					money["currency"].gp += currency
-					break
+					level = [int(x) for x in split]
+					level_range = True
+
+			except ValueError:
+				print("Please only insert an integer or a range with the syntax X-Y.")
+
+			else:
+				if level_range:
+					if 0 < level[0] <= 20 and 0 < level[1] <= 20:
+						total_value = tbl["Total Value"][min(level)-1:max(level)-1].sum() # Get total value from the TBL table
+						break
+					else:
+						print("Please only insert levels between 1 and 20")
+				else:
+					if 0 < level <= 20:
+						total_value = tbl.at[level - 1, "Total Value"] # Get total value from the TBL table
+						break
+					else:
+						print("Please only insert a level between 1 and 20")
 	else:
-		currency = 0
+		# Check if the input is a positive scalar integer
+		try:
+			if int(level) < 0:
+				print("Please only insert levels between 1 and 20")
+				sys.exit(1)
+		except ValueError:
+			pass
+
+		# Check if every input value is a valid scalar integer
+		split = level.split("-")
+		for elem in split:
+			try: int(elem)
+			except ValueError:
+				print("Invalid level type.\nPlease only insert an integer or a range with the syntax X-Y.")
+				sys.exit(1)
+
+		if [level] == split:
+			level = int(level)
+			level_range = False
+		else:
+			level = [int(x) for x in split]
+			level_range = True
+
+		if level_range:
+			if 0 < level[0] <= 20 and 0 < level[1] <= 20:
+				total_value = tbl["Total Value"][min(level)-1:max(level)-1].sum() # Get total value from the TBL table
+			else:
+				print("Please only insert levels between 1 and 20")
+				sys.exit(1)
+		else:
+			if 0 < level <= 20:
+				total_value = tbl.at[level - 1, "Total Value"] # Get total value from the TBL table
+			else:
+				print("Please only insert a level between 1 and 20")
+				sys.exit(1)
+
+	money["currency"] += Money(gp=currency, origin="currency")
+	# if currency is None:
+	# 	choice = input("Do you want to add extra currency (in gp)? (y/[n]) ") # Ask to add extra plain currency
+	# 	if choice == "y":
+	# 		while True:
+	# 			try:
+	# 				currency = int(input("How much? "))
+	# 			except ValueError:
+	# 				print("Please only insert an integer")
+	# 			else:
+	# 				if currency < 0:
+	# 					print("Please only insert a positive number")
+	# 				else:
+	# 					money["currency"].gp += currency
+	# 					break
+	# 	else:
+	# 		currency = 0
 
 	# Convert coins in gp where possible
 	for origin in money.keys():
@@ -369,16 +412,16 @@ if __name__ == "__main__":
 	
 	money["total"] = get_total(money.values())
 
-	print(f"""
-Total value (converted in gp):
-	{str(money["total"].cp)} cp
-	{str(money["total"].sp)} sp
-	{str(money["total"].gp)} gp
+	print(textwrap.dedent(f"""
+			Total value (converted in gp):
+				{str(money["total"].cp)} cp
+				{str(money["total"].sp)} sp
+				{str(money["total"].gp)} gp
 
-Of which:
-	Items: {money["item"].gp} gp
-	Currency: {money["currency"].gp} gp
-""")
+			Of which:
+				Items: {money["item"].gp} gp
+				Currency: {money["currency"].gp} gp
+			"""))
 
 	print("Difference:")
 	if total_value - money["total"].gp < 0:
@@ -388,6 +431,69 @@ Of which:
 	else:
 		print(f"None (Expected: {total_value} gp)")
 
+def entry_point():
+	parser = argparse.ArgumentParser(description="A simple tool for Pathfinder 2e to calculate how much your loot is worth.")
+	parser.add_argument("input", type=str, nargs='?', default='',
+						help="the name of the text file containing the loot")
+	parser.add_argument("-l", "--level", type=str,
+						help="the level of the party; can be an integer or of the form X-Y (eg. 5-8)")
+	parser.add_argument("-c", "--currency", type=int, default=0,
+	 					help="a flat amount of gp to add to the total")
+	parser.add_argument("-f", "--format", action="store_true",
+						help="show formatting instructions for the text file and exit")
+	args = parser.parse_args()
+
+	if args.format:
+		# Add more info in the formatting instructions
+		print(textwrap.dedent("""
+			[TEXT FILE FORMAT]
+			The text file must contain two comma-separated columns:
+			The first is the item name, which is case insensitive but requires correct spelling
+			The second is the amount of items you want to add and must be a positive integer
+			This means that each row is an item name and how many there are
+			
+			[VALID ITEM NAMES]
+			The item name must use the spelling used on the Archives of Nethys
+			If the item has a grade, it must added in brackets after the name
+			For instance, "smokestick (lesser)" is correct, "lesser smokestick" is not
+
+			The item name can also be an item with runes etched into it and the price will be calculated automatically
+			"+1 striking longsword" is a valid name, as is "+3 major striking greater shock ancestral echoing vorpal glaive"
+			For runes specifically, the grade must be placed before the rune itself, as you would write normally
+			It should be "+2 greater striking longbow" and not "+2 striking (greater) longbow" 
+
+			The item can also include a precious material, though you must specify the grade
+			The grade must be after the item name and simply needs to include "low", "standard" or "high"
+			"silver dagger (low-grade)" is correct, as is "silver dagger low"
+			Make sure that it's only one word: "high-grade" is ok, "high grade" is not
+			Remember that not every material supports every grade; invalid grades currently crash the program
+
+			Runes and precious materials can be combined in one single name
+			"+1 striking mithral warhammer (standard)" is valid
+
+			The item can also be plain currency, though you still need to specify the amount
+			"32gp" is a valid item name, but the second column must still be filled with a number
+			Accepted currencies are "cp", "sp" and "gp". "pp" in not supported
+
+			[EXAMPLE]
+			longsword,1
+			oil of potency,2
+			smokestick (lesser),5
+			32sp,1
+			+1 striking shock rapier,1
+			storm flash,1
+			cold iron warhammer (standard),1
+			"""))
+		sys.exit(0)
+	elif os.path.isfile(args.input) and args.input.endswith(".txt"):
+		console_entry_point(args.input, args.level, args.currency)
+	else:
+		print("Please input a valid text file.")
+
+if __name__ == "__main__":
+	entry_point()
+
+
 # TODO
 # [DONE] Allow adding an arbitrary amount of gold for plain wealth
 # [DONE] Check what happens if you add a comma but no quantity (i.e. tindertwig, )
@@ -395,6 +501,12 @@ Of which:
 # [DONE] Add support for calculating wealth only for a specific (range of) level(s), instead of all of them up to the user input
 # Maybe change item_info type to dict or custom data structure
 # Print how many items of a given level, category and rarity there are
+# Add different verbosity levels
+# Add support for multiple file input, which calculates the value of all of the items in every file. Useful, for instance, to keep loot for each level or area separate
+# Add description of how levels/level ranges work in the help description
+# Add switch to autocorrect spelling mistakes instead of just suggest corrections
+# Make amount columns optional (default is 1)
+# Add platinum piece support?
 
 # Known exceptions:
 # Handwraps of mighty blows don't have a listing in the item list without runes: add special warning about that
