@@ -11,9 +11,33 @@ license = "GPL-3.0-or-later"
 python = "^3.10"
 pandas = "^1.5.2"
 
+[tool.poetry.group.test]
+optional = true
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.1.2"
+mypy = "^0.981"
+
 [tool.poetry.scripts]
-pf2ewc = "pf2e_wealth_calculator:entry_point"
+pf2ewc = "pf2e_wealth_calculator.pf2ewc:entry_point"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+mypy_path = "pf2e_wealth_calculator"
+check_untyped_defs = true
+disallow_any_generics = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+no_implicit_reexport = true
+
+[tool.pyright]
+exclude = "pf2e_wealth_calculator/dataframes.py"

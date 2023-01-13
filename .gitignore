@@ -163,4 +163,4 @@ cython_debug/
 # Manually added
 pf2e-wealth-calculator_old.py
 *.txt
-test.py
+stuff.py

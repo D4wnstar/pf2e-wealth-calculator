@@ -1,1 +1,0 @@
-from pf2e_wealth_calculator.pf2ewc import *
