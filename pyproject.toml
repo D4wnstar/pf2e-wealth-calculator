@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pf2e-wealth-calculator"
 version = "0.1.0"
-description = "A simple tool for Pathfinder 2e to calculate how much your loot is worth."
+description = "A simple tool for Pathfinder 2e that calculates how much your loot is worth."
 authors = ["D4wnstar <104584158+D4wnstar@users.noreply.github.com>"]
 readme = "README.md"
 packages = [{include = "pf2e_wealth_calculator"}]

@@ -41,7 +41,9 @@ import pytest
          pf.Money(gp=2), 'adjustments', 0, 'uncommon')),
         # Different category (staves)
         ('staff of the dreamlands', 1, pf.ItemInfo(
-            'staff of the dreamlands', pf.Money(gp=250), 'staves', 6, 'uncommon'))
+            'staff of the dreamlands', pf.Money(gp=250), 'staves', 6, 'uncommon')),
+        # Different category (shields)
+        ('buckler', 1, pf.ItemInfo('buckler', pf.Money(gp=1), 'shields', 0, 'common'))
     ]
 )
 def test_parse(item_name, amount, item_info):
@@ -82,7 +84,14 @@ def test_parse_restricted(item_name, amount, category, item_info):
             'silver breastplate (low-grade)', pf.Money(gp=140), 'armor', 5, 'common')),
         # Multi-word armor
         ('adamantine full plate (high)', 1, pf.ItemInfo(
-            'adamantine full plate (high-grade)', pf.Money(gp=32000), 'armor', 19, 'uncommon'))
+            'adamantine full plate (high-grade)', pf.Money(gp=32000), 'armor', 19, 'uncommon')),
+        # Precious shields
+        ('silver shield low', 1, pf.ItemInfo('silver shield (low-grade)', pf.Money(gp=34), 'shields', 2, 'common')),
+        # Bucklers and tower shields are different from shields
+        ('silver buckler low', 1, pf.ItemInfo('silver buckler (low-grade)', pf.Money(gp=30), 'shields', 2, 'common')),
+        ('adamantine tower shield (high)', 1, pf.ItemInfo('adamantine tower shield (high-grade)', pf.Money(gp=8800), 'shields', 16, 'uncommon')),
+        # Test the only wooden precious shield
+        ('darkwood shield standard', 1, pf.ItemInfo('darkwood shield (standard-grade)', pf.Money(gp=440), 'shields', 8, 'uncommon'))
     ]
 )
 def test_parse_precious(item_name, amount, item_info):

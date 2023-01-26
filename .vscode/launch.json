@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["loot.txt", "-l 1"]
+            "args": ["loot.txt", "-l 1-2"]
         }
     ]
 }

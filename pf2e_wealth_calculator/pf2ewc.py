@@ -13,9 +13,8 @@ import textwrap
 
 @dataclass
 class Money:
-    """
-    Simple data structure for cp/sp/gp amounts.
-    """
+    """Simple data structure for cp/sp/gp amounts."""
+
     cp: int = 0
     sp: int = 0
     gp: int = 0
@@ -50,9 +49,8 @@ class Money:
 
 @dataclass(frozen=True)
 class ItemInfo:
-    """
-    Data structure that contains information on a given item.
-    """
+    """Data structure that contains information on a given item."""
+
     name: str = "item"
     price: Money = Money()
     category: str | None = None
@@ -61,6 +59,8 @@ class ItemInfo:
 
 
 def get_higher_rarity(rar1: str, rar2: str) -> str:
+    """Get the higher rarity among the two given ones."""
+
     ordering = {
         "common": 1,
         "uncommon": 2,
@@ -71,6 +71,42 @@ def get_higher_rarity(rar1: str, rar2: str) -> str:
     rarnum2 = ordering[rar2]
 
     return rar1 if rarnum1 > rarnum2 else rar2
+
+
+def get_material_grade(
+        name_split: list[str],
+        materials: list[str] = materials) -> tuple[str, str | None, str | None]:
+    """Get the grade and material from an item's name, if present."""
+
+    if name_split[0] in materials:
+        material = name_split.pop(0)
+    elif len(name_split) > 1 and f"{name_split[0]} {name_split[1]}" in materials:
+        # Both pops are zero because they happen in sequence
+        # so the first one pops element zero and the second
+        # pops element one
+        material = f"{name_split.pop(0)} {name_split.pop(0)}"
+    else:
+        return " ".join(name_split), None, None
+
+    grade = name_split.pop(-1)
+
+    if "low" in grade:
+        grade = "(low-grade)"
+    elif "standard" in grade:
+        grade = "(standard-grade)"
+    elif "high" in grade:
+        grade = "(high-grade)"
+
+    base_name = " ".join(name_split)
+    
+    # There is no entry for "shield" so it defaults to "steel shield",
+    # unless it's a darkwood shield, in which case it must be a "wooden shield"
+    if base_name == "shield" and material == "darkwood":
+        base_name = "wooden shield"
+    elif base_name == "shield":
+        base_name = "steel shield"
+    
+    return base_name, material, grade
 
 
 def parse_database(
@@ -91,41 +127,10 @@ def parse_database(
         is_currency.origin = "currency"
         return ItemInfo(item_name, is_currency, "currency")
 
-    material: str | None = None
-    grade: str | None = None
-
     # Check if the first one or two words denote a precious material
-    name_list = item_name.split(" ")
-    if name_list[0] in materials:
-        material = name_list.pop(0)
-        grade = name_list.pop(-1)
+    item_name, material, grade = get_material_grade(item_name.split(), materials)
 
-        if "low" in grade:
-            grade = "(low-grade)"
-        elif "standard" in grade:
-            grade = "(standard-grade)"
-        elif "high" in grade:
-            grade = "(high-grade)"
-
-        item_name = " ".join(name_list)
-    elif " ".join(name_list[0:2]):
-        try:
-            if name_list[0] + " " + name_list[1] in materials:
-                material = name_list[0] + " " + name_list[1]
-                del name_list[0:2] # TODO: Change to pop
-                grade = name_list.pop(-1)
-
-                if "low" in grade:
-                    grade = "(low-grade)"
-                elif "standard" in grade:
-                    grade = "(standard-grade)"
-                elif "high" in grade:
-                    grade = "(high-grade)"
-
-                item_name = " ".join(name_list)
-        except IndexError:
-            pass
-
+    # If category is restricted, check only items from that category
     if restrict_cat:
         filtered_list = itemlist.set_index('category')
         filtered_list = filtered_list.filter(like=restrict_cat, axis=0)
@@ -137,12 +142,14 @@ def parse_database(
     # and print a warning
     if item_row.empty:
         if not quiet:
-            suggestion = "".join(get_close_matches(
-                item_name.strip(), df["name"].tolist(), 1, 0))
-            print(
-                f'WARNING: Ignoring item "{item_name}". Did you mean "{suggestion}"?')
+            suggestion = "".join(get_close_matches(item_name.strip(), df["name"].tolist(), 1, 0))
+            print(f'WARNING: Ignoring item "{item_name}". Did you mean "{suggestion}"?')
 
         return ItemInfo(item_name, category="error")
+    
+    # Fix shield name including "steel" or "wooden" even if it's made of a precious material
+    if "shield" in item_name and not "tower" in item_name and material:
+        item_name = "shield"
 
     # Get item stats
     item_category = item_row["category"].item() if not restrict_cat else restrict_cat
@@ -161,8 +168,10 @@ def parse_database(
             "shields": "shield",
             "materials": "object",
             "adventuring gear": "object"
+            # TODO: Might need to add more
         }
-        material_name = f"{material} {categories[item_category]} {grade}"
+        category = categories[item_category] if "buckler" not in item_name else "buckler"
+        material_name = f"{material} {category} {grade}"
 
         # Add the price of the precious material
         item_price = get_price(
@@ -216,6 +225,15 @@ def get_potency_rune_stats(cached_rune: str, category: str | None, level: int) -
         return Money(), level
 
 
+def check_multiword_item(item, amount, item_runes, cur_index):
+    item += " " + " ".join(item_runes[cur_index+1:])
+    item_info = parse_database(item, amount, quiet=True)
+    if item_info.category != "error":
+        return item_info
+    else:
+        return ItemInfo(item, category="error")
+
+
 def rune_calculator(
         item_name,
         amount,
@@ -224,39 +242,15 @@ def rune_calculator(
         materials: list[str] = materials) -> ItemInfo:
     """Automatically breaks down the item's name into singular runes and returns the total price as a Money object."""
 
-    def check_multiword_item(item, amount, item_runes, cur_index):
-        # increment = 1
-
-        # while True:
-        #     try:
-        #         # Iteratively append the following runes in the item name until
-        #         # it finds something
-        #         item += " " + item_runes[cur_index + increment]
-        #         item_info = parse_database(item, amount, quiet=True)
-        #         if item_info.category != "error":  # If it finds something, continue with price calculation and finish loop
-        #             # Non-rune items must always be at the end of the name,
-        #             # thus it's guaranteed there's nothing left
-        #             return item_info
-        #         increment += 1
-
-        #     except IndexError:
-        #         return ItemInfo(item_name, category="error")
-
-        item += " " + " ".join(item_runes[cur_index+1:])
-        item_info = parse_database(item, amount, quiet=True)
-        if item_info.category != "error":
-            return item_info
-        else:
-            return ItemInfo(item, category="error")
 
     running_sum = Money()
+    rune_info = ItemInfo()
     highest_level = 0
     highest_rarity = "common"
-    item_runes = item_name.split()  # Break up the name into single runes
     potency_rune = "0"
     skip_cycle = False
 
-    rune_info = ItemInfo()  # Define early for type safety
+    item_runes = item_name.split()  # Break up the name into single runes
 
     # Cycle through runes found in the item name
     for cur_index, rune in enumerate(item_runes):
@@ -291,8 +285,7 @@ def rune_calculator(
         # Replace the name if necessary. If it is replaced, replace and short-circuit cycle
         rune_row = rune_names[rune_names["name"] == rune]
         if not rune_row.empty and len(rune_row["replacer"].item()) > 0:
-            rune_info = parse_database(
-                rune_row["replacer"].item(), amount, quiet=True)
+            rune_info = parse_database(rune_row["replacer"].item(), amount, quiet=True)
             running_sum += rune_info.price
             highest_level = rune_info.level if rune_info.level > highest_level else highest_level
             highest_rarity = get_higher_rarity(
@@ -304,20 +297,17 @@ def rune_calculator(
 
         # Find the rune in the list of runes (if present)
         if rune not in materials:
-            rune_info = parse_database(
-                rune, amount, df=df, materials=materials, restrict_cat='runes', quiet=True)
+            rune_info = parse_database(rune, amount, df=df, materials=materials, restrict_cat='runes', quiet=True)
         else:
             rune_info = ItemInfo(rune, category="error")
 
         # If it's not in the list, or it's a material, it might be a multi-word item name or a precious material
         # It's guaranteed to not be a rune because of the rune name replacer
         if rune_info.category == "error":
-            rune_info = check_multiword_item(
-                rune, amount, item_runes, cur_index)
+            rune_info = check_multiword_item(rune, amount, item_runes, cur_index)
             if rune_info.category != "error":
                 highest_level = rune_info.level if rune_info.level > highest_level else highest_level
-                highest_rarity = get_higher_rarity(
-                    highest_rarity, rune_info.rarity)
+                highest_rarity = get_higher_rarity(highest_rarity, rune_info.rarity)
                 running_sum += rune_info.price
                 break
             else:
@@ -326,8 +316,7 @@ def rune_calculator(
                 return ItemInfo(item_name, category="error")
         else:
             highest_level = rune_info.level if rune_info.level > highest_level else highest_level
-            highest_rarity = get_higher_rarity(
-                highest_rarity, rune_info.rarity)
+            highest_rarity = get_higher_rarity(highest_rarity, rune_info.rarity)
 
         # Add rune/base item price to the total
         running_sum += rune_info.price
@@ -342,7 +331,12 @@ def rune_calculator(
     add_to_sum, highest_level = get_potency_rune_stats(
         potency_rune, rune_info.category, highest_level)
     running_sum += add_to_sum
-    return ItemInfo(item_name, running_sum, rune_info.category, highest_level, highest_rarity)
+    return ItemInfo(
+        item_name,
+        running_sum,
+        rune_info.category,
+        highest_level,
+        highest_rarity)
 
 
 def get_price(price_str: str, amount: int) -> Money:
@@ -390,96 +384,67 @@ def console_entry_point(input_file, level, currency):
         "currency": Money(origin="currency")
     }
 
+    levels = {}
+    categories = {}
+    rarities = {}
+
     # Get the price for each item
     for _, row in loot.iterrows():
         # Check if there is a fundamental rune in the item
         if "+1" in row["name"] or "+2" in row["name"] or "+3" in row["name"]:
             curr_item = rune_calculator(row.tolist()[0], row.tolist()[1])
-            money[curr_item.price.origin] += curr_item.price
         else:
             curr_item = parse_database(row.tolist()[0], row.tolist()[1])
-            money[curr_item.price.origin] += curr_item.price
 
-    if level is None:
-        # If no level is passed, ask for it interactively
-        while True:
-            try:
-                level = input(
-                    "Enter the party's level or a range of levels (e.g. 5-8): ")
-                split = level.split("-")
-                if [level] == split:
-                    level = int(level)
-                else:
-                    level = [int(x) for x in split]
+        money[curr_item.price.origin] += curr_item.price
+        
+        try: levels[str(curr_item.level)] += 1
+        except KeyError: levels[str(curr_item.level)] = 1
 
-            except ValueError:
-                print("Please only insert an integer or a range with the syntax X-Y.")
+        try: categories[curr_item.category] += 1
+        except KeyError: categories[curr_item.category] = 1
+        
+        try: rarities[curr_item.rarity] += 1
+        except KeyError: rarities[curr_item.rarity] = 1
+        
+    # Manage the level
+    try:
+        level = [int(x) for x in level.split("-")]
+    except ValueError:
+        print("Invalid level type\nPlease only insert an integer or a range with the syntax X-Y")
+        sys.exit(1)
 
-            else:
-                if type(level) is list:
-                    if 0 < level[0] <= 20 and 0 < level[1] <= 20:
-                        # Get total value from the TBL table
-                        total_value = tbl["Total Value"][min(
-                            level) - 1:max(level) - 1].sum()
-                        break
-                    else:
-                        print("Please only insert levels between 1 and 20")
-                elif type(level) is int:
-                    if 0 < level <= 20:
-                        # Get total value from the TBL table
-                        total_value = tbl.at[level - 1, "Total Value"]
-                        break
-                    else:
-                        print("Please only insert a level between 1 and 20")
-    else:
-        # Check if the input is a positive scalar integer
-        try:
-            if int(level) < 0:
-                print("Please only insert levels between 1 and 20")
-                sys.exit(1)
-        except ValueError:
-            pass
+    if len(level) == 1:
+        level = level[0]
+    elif len(level) > 2:
+        print("Invalid level type\nPlease only insert an integer or a range with the syntax X-Y")
+        sys.exit(1)
 
-        # Check if every input value is a valid scalar integer
-        split = level.split("-")
-        try:
-            map(int, split)
-        except ValueError:
-            print(
-                "Invalid level type.\nPlease only insert an integer or a range with the syntax X-Y.")
+    if type(level) is list:
+        if 0 < level[0] <= 20 and 0 < level[1] <= 20:
+            # Get total value from the TBL table
+            total_value = tbl["Total Value"][min(
+                level) - 1:max(level)].sum()
+        else:
+            print("Please only insert levels between 1 and 20")
             sys.exit(1)
-
-        if [level] == split:
-            level = int(level)
+    elif type(level) is int:
+        if 0 < level <= 20:
+            # Get total value from the TBL table
+            total_value = tbl.at[level - 1, "Total Value"]
         else:
-            level = [int(x) for x in split]
-
-        if type(level) is list:
-            if 0 < level[0] <= 20 and 0 < level[1] <= 20:
-                # Get total value from the TBL table
-                total_value = tbl["Total Value"][min(
-                    level) - 1:max(level) - 1].sum()
-            else:
-                print("Please only insert levels between 1 and 20")
-                sys.exit(1)
-        elif type(level) is int:
-            if 0 < level <= 20:
-                # Get total value from the TBL table
-                total_value = tbl.at[level - 1, "Total Value"]
-            else:
-                print("Please only insert a level between 1 and 20")
-                sys.exit(1)
-        else:
-            print(
-                "Invalid level type.\nPlease only insert an integer or a range with the syntax X-Y.")
-            sys.exit(1)  # Probably unreachable, but type safety y'know
+            print("Please only insert a level between 1 and 20")
+            sys.exit(1)
+    else:
+        print("Invalid level type\nPlease only insert an integer or a range with the syntax X-Y")
+        sys.exit(1)  # Probably unreachable, but type safety y'know
 
     money["currency"] += Money(gp=currency, origin="currency")
 
     # Convert coins in gp where possible
     for origin in money.keys():
-        money[origin].gp += int(money[origin].cp / 100)
-        money[origin].gp += int(money[origin].sp / 10)
+        money[origin].gp += money[origin].cp // 100
+        money[origin].gp += money[origin].sp // 10
         money[origin].cp %= 100
         money[origin].sp %= 10
 
@@ -491,11 +456,11 @@ def console_entry_point(input_file, level, currency):
 
     money["total"] = get_total(money.values())
 
-    print(textwrap.dedent(f"""
+    print(textwrap.dedent(f"""\
             Total value (converted in gp):
-                {str(money["total"].cp)} cp
-                {str(money["total"].sp)} sp
-                {str(money["total"].gp)} gp
+                {money["total"].cp} cp
+                {money["total"].sp} sp
+                {money["total"].gp} gp
 
             Of which:
                 Items: {money["item"].gp} gp
@@ -504,39 +469,43 @@ def console_entry_point(input_file, level, currency):
 
     print("Difference:")
     if total_value - money["total"].gp < 0:
-        print(
-            f"{abs(total_value - money['total'].gp)} gp too much (Expected: {total_value} gp)")
+        print(f"    {abs(total_value - money['total'].gp)} gp too much (Expected {total_value} gp)")
     elif total_value - money["total"].gp > 0:
-        print(
-            f"{abs(total_value - money['total'].gp)} gp too little (Expected: {total_value} gp)")
+        print(f"    {abs(total_value - money['total'].gp)} gp too little (Expected {total_value} gp)")
     else:
-        print(f"None (Expected: {total_value} gp)")
+        print(f"    None (Expected {total_value} gp)")
 
+    print("\nLevels:")
+    for lvl, amount in levels.items():
+        print(f"    Level {lvl}: {amount}")
+
+    print("\nCategories:")
+    for cat, amount in categories.items():
+        print(f"    {cat.capitalize()}: {amount}")
+
+    print("\nRarities:")
+    for rar, amount in rarities.items():
+        print(f"    {rar.capitalize()}: {amount}")
+    
     sys.exit(0)
 
 
 def entry_point():
     parser = argparse.ArgumentParser(
-        description="A simple tool for Pathfinder 2e to calculate how much your loot is worth.")
+        description="A simple tool for Pathfinder 2e that calculates how much your loot is worth.")
     parser.add_argument("input", type=str, nargs='?', default='',
                         help="the name of the text file containing the loot")
-    parser.add_argument(
-        "-l",
-        "--level",
-        type=str,
-        help="the level of the party; can be an integer or of the form X-Y (eg. 5-8)")
+    parser.add_argument("-l", "--level", type=str,
+                        help="the level of the party; can be an integer or of the form X-Y (eg. 5-8)")
     parser.add_argument("-c", "--currency", type=int, default=0,
                         help="a flat amount of gp to add to the total")
-    parser.add_argument(
-        "-f",
-        "--format",
-        action="store_true",
-        help="show formatting instructions for the text file and exit")
+    parser.add_argument("-f", "--format", action="store_true",
+                        help="show formatting instructions and exit")
     args = parser.parse_args()
 
     if args.format:
         # Add more info in the formatting instructions
-        print(textwrap.dedent("""
+        print(textwrap.dedent("""\
             [TEXT FILE FORMAT]
             The text file must contain two comma-separated columns:
             The first is the item name, which is case insensitive but requires correct spelling
@@ -564,9 +533,9 @@ def entry_point():
 
             The item can also be plain currency, though you still need to specify the amount
             "32gp" is a valid item name, but the second column must still be filled with a number
-            Accepted currencies are "cp", "sp" and "gp". "pp" in not supported
+            Accepted currencies are "cp", "sp" and "gp"; "pp" in not supported
 
-            [EXAMPLE]
+            [SAMPLE FILE]
             longsword,1
             oil of potency,2
             smokestick (lesser),5
@@ -574,12 +543,26 @@ def entry_point():
             +1 striking shock rapier,1
             storm flash,1
             cold iron warhammer (standard),1
+
+            [LEVEL RANGES]
+            Levels can be input both as a single value (like "1") and as a range (like "1-6")
+            A single value represents the amount of treasure that the players should find over the course of that level
+            A range instead represents the amount of treasure expected for that range of levels
+            For example, "1" is how much treasure should be given to the PCs progressing through level 1
+            while "1-3" refers to how much treasures should be given throughout levels 1, 2 and 3
+            The values are taken from the Treasure by Level table on page 508 of the Core Rulebook
+            On Archives of Nethys: https://2e.aonprd.com/Rules.aspx?ID=581\
             """))
         sys.exit(0)
-    elif os.path.isfile(args.input) and args.input.endswith(".txt"):
+    
+    if args.level == None:
+        print("Please input a level using the -l argument\nUse pf2ewc -h for more information")
+        sys.exit(1)
+
+    if os.path.isfile(args.input) and args.input.endswith(".txt"):
         console_entry_point(args.input, args.level, args.currency)
     else:
-        print("Please input a valid text file.")
+        print("Please input a valid text file")
         sys.exit(1)
 
 
@@ -588,9 +571,9 @@ if __name__ == "__main__":
 
 
 # -----------------#
-#   NEEDS FIXING   #
+#   MAJOR ISSUES   #
 # -----------------#
-# Nothing urgent :)
+# Nothing... FOR NOW
 
 
 # TODO
@@ -599,12 +582,16 @@ if __name__ == "__main__":
 # [DONE] Add support for dynamic rune price calculation (i.e. auto-calculate price of +1 striking keen warhammer). Maybe use that all items with runes must start with a +
 # [DONE] Add support for calculating wealth only for a specific (range of) level(s), instead of all of them up to the user input
 # [DONE] Maybe change item_info type to dict or custom data structure
-# Print how many items of a given level, category and rarity there are
+# [DONE] Print how many items of a given level, category and rarity there are
 # Add different verbosity levels
 # Add support for multiple file input, which calculates the value of all of the items in every file. Useful, for instance, to keep loot for each level or area separate
-# Add description of how levels/level ranges work in the help description
+# [DONE] Add description of how levels/level ranges work in the help description
 # Add switch to autocorrect spelling mistakes instead of just suggest corrections
 # Make amount column optional (default is 1)
+# Maybe change category in ItemInfo from str to Enum (from the Enum library)
+# Add a check to see if the text file is formatted properly and direct the user to use pf2ewc -f to get instructions
+# Replace all the formatting stuff (fundamental rune, rune prefix handling, etc.) in rune_calculator to happen outside of the for loop
+# Add switch to avoid conversion to gp
 
 # KNOWN ISSUES:
 # Handwraps of mighty blows don't have a listing in the item list without runes: add special warning about that
