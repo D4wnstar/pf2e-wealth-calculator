@@ -41,3 +41,4 @@ no_implicit_reexport = true
 
 [tool.pyright]
 exclude = "pf2e_wealth_calculator/dataframes.py"
+reportUnboundVariable = false

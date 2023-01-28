@@ -369,7 +369,7 @@ def get_price(price_str: str, amount: int) -> Money:
         return Money()
 
 
-def console_entry_point(input_file, level, currency):
+def console_entry_point(input_file, level, currency, noconversion):
     # User-defined loot
     loot = pd.read_csv(input_file, names=["name", "amount"])
     loot["name"] = loot["name"].apply(lambda name: name.lower())
@@ -390,63 +390,65 @@ def console_entry_point(input_file, level, currency):
 
     # Get the price for each item
     for _, row in loot.iterrows():
+        name, amount = row.tolist()
         # Check if there is a fundamental rune in the item
-        if "+1" in row["name"] or "+2" in row["name"] or "+3" in row["name"]:
-            curr_item = rune_calculator(row.tolist()[0], row.tolist()[1])
+        if "+1" in name or "+2" in name or "+3" in name:
+            curr_item = rune_calculator(name, amount)
         else:
-            curr_item = parse_database(row.tolist()[0], row.tolist()[1])
+            curr_item = parse_database(name, amount)
 
         money[curr_item.price.origin] += curr_item.price
         
-        try: levels[str(curr_item.level)] += 1
-        except KeyError: levels[str(curr_item.level)] = 1
+        try: levels[str(curr_item.level)] += amount
+        except KeyError: levels[str(curr_item.level)] = amount
 
-        try: categories[curr_item.category] += 1
-        except KeyError: categories[curr_item.category] = 1
+        try: categories[curr_item.category] += amount
+        except KeyError: categories[curr_item.category] = amount
         
-        try: rarities[curr_item.rarity] += 1
-        except KeyError: rarities[curr_item.rarity] = 1
+        try: rarities[curr_item.rarity] += amount
+        except KeyError: rarities[curr_item.rarity] = amount
         
-    # Manage the level
-    try:
-        level = [int(x) for x in level.split("-")]
-    except ValueError:
-        print("Invalid level type\nPlease only insert an integer or a range with the syntax X-Y")
-        sys.exit(1)
-
-    if len(level) == 1:
-        level = level[0]
-    elif len(level) > 2:
-        print("Invalid level type\nPlease only insert an integer or a range with the syntax X-Y")
-        sys.exit(1)
-
-    if type(level) is list:
-        if 0 < level[0] <= 20 and 0 < level[1] <= 20:
-            # Get total value from the TBL table
-            total_value = tbl["Total Value"][min(
-                level) - 1:max(level)].sum()
-        else:
-            print("Please only insert levels between 1 and 20")
+    # Manage the level, if given
+    if level:
+        try:
+            level = [int(x) for x in level.split("-")]
+        except ValueError:
+            print("Invalid level type\nPlease only insert an integer or a range with the syntax X-Y")
             sys.exit(1)
-    elif type(level) is int:
-        if 0 < level <= 20:
-            # Get total value from the TBL table
-            total_value = tbl.at[level - 1, "Total Value"]
-        else:
-            print("Please only insert a level between 1 and 20")
+
+        if len(level) == 1:
+            level = level[0]
+        elif len(level) > 2:
+            print("Invalid level type\nPlease only insert an integer or a range with the syntax X-Y")
             sys.exit(1)
-    else:
-        print("Invalid level type\nPlease only insert an integer or a range with the syntax X-Y")
-        sys.exit(1)  # Probably unreachable, but type safety y'know
+
+        if type(level) is list:
+            if 0 < level[0] <= 20 and 0 < level[1] <= 20:
+                # Get total value from the TBL table
+                total_value = tbl["Total Value"][min(level) - 1:max(level)].sum()
+            else:
+                print("Please only insert levels between 1 and 20")
+                sys.exit(1)
+        elif type(level) is int:
+            if 0 < level <= 20:
+                # Get total value from the TBL table
+                total_value = tbl.at[level - 1, "Total Value"]
+            else:
+                print("Please only insert a level between 1 and 20")
+                sys.exit(1)
+        else:
+            print("Invalid level type\nPlease only insert an integer or a range with the syntax X-Y")
+            sys.exit(1)  # Probably unreachable, but type safety y'know
 
     money["currency"] += Money(gp=currency, origin="currency")
 
-    # Convert coins in gp where possible
-    for origin in money.keys():
-        money[origin].gp += money[origin].cp // 100
-        money[origin].gp += money[origin].sp // 10
-        money[origin].cp %= 100
-        money[origin].sp %= 10
+    # Convert coins in gp where possible, if requested
+    if not noconversion:
+        for origin in money.keys():
+            money[origin].gp += money[origin].cp // 100
+            money[origin].gp += money[origin].sp // 10
+            money[origin].cp %= 100
+            money[origin].sp %= 10
 
     def get_total(money_list):
         res = Money(origin="Total", check_origin=False)
@@ -467,15 +469,16 @@ def console_entry_point(input_file, level, currency):
                 Currency: {money["currency"].gp} gp
             """))
 
-    print("Difference:")
-    if total_value - money["total"].gp < 0:
-        print(f"    {abs(total_value - money['total'].gp)} gp too much (Expected {total_value} gp)")
-    elif total_value - money["total"].gp > 0:
-        print(f"    {abs(total_value - money['total'].gp)} gp too little (Expected {total_value} gp)")
-    else:
-        print(f"    None (Expected {total_value} gp)")
+    if level:
+        print("Difference:")
+        if total_value - money["total"].gp < 0:
+            print(f"    {abs(total_value - money['total'].gp)} gp too much (Expected {total_value} gp)\n")
+        elif total_value - money["total"].gp > 0:
+            print(f"    {abs(total_value - money['total'].gp)} gp too little (Expected {total_value} gp)\n")
+        else:
+            print(f"    None (Expected {total_value} gp)\n")
 
-    print("\nLevels:")
+    print("Levels:")
     for lvl, amount in levels.items():
         print(f"    Level {lvl}: {amount}")
 
@@ -501,6 +504,8 @@ def entry_point():
                         help="a flat amount of gp to add to the total")
     parser.add_argument("-f", "--format", action="store_true",
                         help="show formatting instructions and exit")
+    parser.add_argument("-n", "--no-conversion", action="store_true",
+                        help="prevent conversion of coins into gp")
     args = parser.parse_args()
 
     if args.format:
@@ -511,6 +516,7 @@ def entry_point():
             The first is the item name, which is case insensitive but requires correct spelling
             The second is the amount of items you want to add and must be a positive integer
             This means that each row is an item name and how many there are
+            The amount can be omitted, in which case it'll default to 1
 
             [VALID ITEM NAMES]
             The item name must use the spelling used on the Archives of Nethys
@@ -532,7 +538,7 @@ def entry_point():
             "+1 striking mithral warhammer (standard)" is valid
 
             The item can also be plain currency, though you still need to specify the amount
-            "32gp" is a valid item name, but the second column must still be filled with a number
+            "32gp" is a valid item name
             Accepted currencies are "cp", "sp" and "gp"; "pp" in not supported
 
             [SAMPLE FILE]
@@ -554,13 +560,9 @@ def entry_point():
             On Archives of Nethys: https://2e.aonprd.com/Rules.aspx?ID=581\
             """))
         sys.exit(0)
-    
-    if args.level == None:
-        print("Please input a level using the -l argument\nUse pf2ewc -h for more information")
-        sys.exit(1)
 
     if os.path.isfile(args.input) and args.input.endswith(".txt"):
-        console_entry_point(args.input, args.level, args.currency)
+        console_entry_point(args.input, args.level, args.currency, args.no_conversion)
     else:
         print("Please input a valid text file")
         sys.exit(1)
@@ -586,15 +588,17 @@ if __name__ == "__main__":
 # Add different verbosity levels
 # Add support for multiple file input, which calculates the value of all of the items in every file. Useful, for instance, to keep loot for each level or area separate
 # [DONE] Add description of how levels/level ranges work in the help description
-# Add switch to autocorrect spelling mistakes instead of just suggest corrections
-# Make amount column optional (default is 1)
+# Add switch to autocorrect spelling mistakes instead of just suggest corrections. Kind of a messy addition though
 # Maybe change category in ItemInfo from str to Enum (from the Enum library)
-# Add a check to see if the text file is formatted properly and direct the user to use pf2ewc -f to get instructions
+# Add a check to see if the text file is formatted properly and direct the user to use pf2ewc -f to get instructions (currently has odd behavior)
 # Replace all the formatting stuff (fundamental rune, rune prefix handling, etc.) in rune_calculator to happen outside of the for loop
-# Add switch to avoid conversion to gp
+# [DONE] Add switch to avoid conversion to gp
+# Setup tox
+# [DONE] Make level input optional
 
 # KNOWN ISSUES:
 # Handwraps of mighty blows don't have a listing in the item list without runes: add special warning about that
 # Wands and scrolls don't have a listing, however their naming scheme is standardized so they can be automated
 # Add dragon's breath rune and called rune handling
 # Precious item cost is wrong as it doesn't take Bulk into account. Currently unfixable because I can't get new CSV tables from the AoN
+# If money is not converted, gp calculation are off by the unconverted amount
