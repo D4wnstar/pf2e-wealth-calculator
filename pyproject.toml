@@ -6,9 +6,10 @@ authors = ["D4wnstar <104584158+D4wnstar@users.noreply.github.com>"]
 readme = "README.md"
 packages = [{include = "pf2e_wealth_calculator"}]
 license = "GPL-3.0-or-later"
+repository = "https://github.com/D4wnstar/pf2e-wealth-calculator"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.8"
 pandas = "^1.5.2"
 
 [tool.poetry.group.test]
@@ -18,9 +19,16 @@ optional = true
 pytest = "^7.1.2"
 mypy = "^0.981"
 black = "^22.6"
+tox = "^4.4.4"
 
 [tool.poetry.scripts]
 pf2ewc = "pf2e_wealth_calculator.pf2ewc:entry_point"
+
+[[tool.poetry.source]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+default = false
+secondary = false
 
 [build-system]
 requires = ["poetry-core"]
@@ -48,9 +56,13 @@ reportUnboundVariable = false
 legacy_tox_ini = """
     [tox]
     requires = tox >= 4
-    env_list = 
+    env_list =
+        py38
+        py39
         py310
+        py311
         format
+    isolated_build = True
 
     [testenv]
     description = run unit tests
@@ -68,5 +80,8 @@ legacy_tox_ini = """
 
     [gh-actions]
     python =
+        3.8: py38
+        3.9: py39
         3.10: py310, format
+        3.11: py311
 """

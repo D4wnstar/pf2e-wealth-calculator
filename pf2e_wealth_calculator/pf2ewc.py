@@ -11,6 +11,13 @@ import argparse
 import textwrap
 
 
+class OriginError(Exception):
+    """Mismatched origin in operation between Money objects."""
+
+    def __init__(self, message):
+        super().__init__(message)
+
+
 @dataclass
 class Money:
     """Simple data structure for cp/sp/gp amounts."""
@@ -33,7 +40,7 @@ class Money:
 
         if type(val) == Money:
             if self.check_origin and val.check_origin and self.origin != val.origin:
-                raise ValueError("Origins don't match")
+                raise OriginError("Origins don't match")
             return Money(
                 self.cp + val.cp,
                 self.sp + val.sp,
@@ -48,6 +55,24 @@ class Money:
 
     def __radd__(self, val):
         return self.__add__(val)
+
+    def __mul__(self, val):
+        if type(val) == int:
+            return Money(
+                self.cp * val,
+                self.sp * val,
+                self.gp * val,
+                self.origin,
+                self.check_origin,
+            )
+
+        else:
+            raise TypeError(
+                f"Unsupported multiplication operation for type {type(val)} on class Money"
+            )
+
+    def __rmul__(self, val):
+        return self.__mul__(val)
 
 
 @dataclass(frozen=True)
@@ -119,13 +144,13 @@ def parse_database(
 ) -> ItemInfo:
     """Parses the Archives of Nethys item list and returns information about the item."""
 
-    is_currency = get_price(item_name, amount)
     item_name = item_name.strip()
 
-    # Check if it's plain currency, in which case short-circuit
-    if is_currency != Money():
-        is_currency.origin = "currency"
-        return ItemInfo(item_name, is_currency, "currency")
+    # Check if the item name is just plain currency, in which case exit early
+    if re.match(r"\d+([,\.]\d*)?\s*(cp|sp|gp)", item_name) is not None:
+        currency_value = get_price(item_name, amount)
+        currency_value.origin = "currency"
+        return ItemInfo(item_name, currency_value, "currency")
 
     # Check if the first one or two words denote a precious material
     item_name, material, grade = get_material_grade(item_name.split(), materials)
@@ -202,32 +227,30 @@ def get_potency_rune_stats(
     "Use the cached potency rune to add the appropriate price, depending on category"
 
     if category == "weapons":
-        match cached_rune:
-            case "+1":
-                level = 2 if 2 > level else level
-                return Money(0, 0, 35), level
-            case "+2":
-                level = 10 if 10 > level else level
-                return Money(0, 0, 935), level
-            case "+3":
-                level = 16 if 16 > level else level
-                return Money(0, 0, 8935), level
-            case _:
-                raise ValueError("Invalid potency rune.")
+        if cached_rune == "+1":
+            level = 2 if 2 > level else level
+            return Money(0, 0, 35), level
+        elif cached_rune == "+2":
+            level = 10 if 10 > level else level
+            return Money(0, 0, 935), level
+        elif cached_rune == "+3":
+            level = 16 if 16 > level else level
+            return Money(0, 0, 8935), level
+        else:
+            raise ValueError("Invalid potency rune.")
 
     elif category == "armor":
-        match cached_rune:
-            case "+1":
-                level = 5 if 5 > level else level
-                return Money(0, 0, 160), level
-            case "+2":
-                level = 11 if 11 > level else level
-                return Money(0, 0, 1060), level
-            case "+3":
-                level = 18 if 18 > level else level
-                return Money(0, 0, 20560), level
-            case _:
-                raise ValueError("Invalid potency rune.")
+        if cached_rune == "+1":
+            level = 5 if 5 > level else level
+            return Money(0, 0, 160), level
+        elif cached_rune == "+2":
+            level = 11 if 11 > level else level
+            return Money(0, 0, 1060), level
+        elif cached_rune == "+3":
+            level = 18 if 18 > level else level
+            return Money(0, 0, 20560), level
+        else:
+            raise ValueError("Invalid potency rune.")
 
     else:
         return Money(), level
@@ -249,7 +272,7 @@ def rune_calculator(
     rune_names: pd.DataFrame = rune_replacer,
     materials: list[str] = materials,
 ) -> ItemInfo:
-    """Automatically breaks down the item's name into singular runes and returns the total price as a Money object."""
+    """Automatically breaks down the item's name into singular runes and calculates price for each."""
 
     running_sum = Money()
     rune_info = ItemInfo()
@@ -364,7 +387,7 @@ def rune_calculator(
     )
 
 
-def get_price(price_str: str, amount: int) -> Money:
+def get_price(price_str: str, amount: int = 1) -> Money:
     """
     Get the price of the given item.
 
@@ -372,25 +395,23 @@ def get_price(price_str: str, amount: int) -> Money:
     """
 
     # Fetch price and coin type through regex
-    item_match = re.search(r"\d*(,\d*)?", price_str)
-    coin_match = re.search(r"cp|sp|gp", price_str)
+    price_match = re.search(r"\d*(,\d*)?", price_str)
+    type_match = re.search(r"cp|sp|gp", price_str)
 
     # Check which kind of coin it is (if any)
-    if coin_match is not None and item_match is not None:
+    if type_match is not None and price_match is not None:
         # Add to total while multiplying by quantity
-        item_price = item_match.group()
-        coin_type = coin_match.group()
+        item_price = price_match.group()
+        coin_type = type_match.group()
 
-        match coin_type:
-            case "cp":
-                return Money(int(item_price.replace(",", "")) * amount, 0, 0)
-            case "sp":
-                return Money(0, int(item_price.replace(",", "")) * amount, 0)
-            case "gp":
-                return Money(0, 0, int(item_price.replace(",", "")) * amount)
-            # This shouldn't even be reachable
-            case _:
-                raise ValueError("Invalid currency type")
+        if coin_type == "cp":
+            return Money(int(item_price.replace(",", "")) * amount, 0, 0)
+        elif coin_type == "sp":
+            return Money(0, int(item_price.replace(",", "")) * amount, 0)
+        elif coin_type == "gp":
+            return Money(0, 0, int(item_price.replace(",", "")) * amount)
+        else:  # This shouldn't even be reachable
+            raise ValueError("Invalid currency type")
     else:
         return Money()
 
@@ -545,25 +566,30 @@ def console_entry_point(input_file, level, currency, noconversion):
 def find_single_item(item_name: str):
     """Fetches and prints information on a single item instead of a table."""
 
+    item_name = item_name.lower()
+
     if "+1" in item_name or "+2" in item_name or "+3" in item_name:
         item = rune_calculator(item_name, 1)
     else:
         item = parse_database(item_name, 1)
-    
+
     if item.price.cp != 0:
         print(f"Value: {item.price.cp}cp")
     elif item.price.sp != 0:
         print(f"Value: {item.price.sp}sp")
     elif item.price.gp != 0:
         print(f"Value: {item.price.gp}gp")
-    
-    print(textwrap.dedent(
-        f"""\
+
+    print(
+        textwrap.dedent(
+            f"""\
         Level: {item.level}
         Category: {item.category.capitalize()}
         Rarity: {item.rarity.capitalize()}\
         """
-    ))
+        )
+    )
+
 
 def entry_point():
     parser = argparse.ArgumentParser(
@@ -602,10 +628,7 @@ def entry_point():
         help="prevent conversion of coins into gp",
     )
     parser.add_argument(
-        "-i",
-        "--item",
-        type=str,
-        help="run the script with only the specified item"
+        "-i", "--item", type=str, help="run the script with only the specified item"
     )
     args = parser.parse_args()
 
@@ -645,13 +668,13 @@ def entry_point():
             Accepted currencies are "cp", "sp" and "gp"; "pp" in not supported
 
             [SAMPLE FILE]
-            longsword,1
-            oil of potency,2
-            smokestick (lesser),5
-            32sp,1
-            +1 striking shock rapier,1
-            storm flash,1
-            cold iron warhammer (standard),1
+            longsword
+            oil of potency, 2
+            smokestick (lesser), 5
+            32sp
+            +1 striking shock rapier
+            storm flash
+            cold iron warhammer (standard)
 
             [LEVEL RANGES]
             Levels can be input both as a single value (like "1") and as a range (like "1-6")
