@@ -17,6 +17,7 @@ optional = true
 [tool.poetry.group.test.dependencies]
 pytest = "^7.1.2"
 mypy = "^0.981"
+black = "^22.6"
 
 [tool.poetry.scripts]
 pf2ewc = "pf2e_wealth_calculator.pf2ewc:entry_point"
@@ -42,3 +43,30 @@ no_implicit_reexport = true
 [tool.pyright]
 exclude = "pf2e_wealth_calculator/dataframes.py"
 reportUnboundVariable = false
+
+[tool.tox]
+legacy_tox_ini = """
+    [tox]
+    requires = tox >= 4
+    env_list = 
+        py310
+        format
+
+    [testenv]
+    description = run unit tests
+    deps = 
+        pytest >= 7
+        pandas >= 1.5
+    commands = 
+        pytest {posargs}
+    
+    [testenv:format]
+    description = run black on the current folder
+    deps = black>=22.6
+    skip_install = true
+    commands = black .
+
+    [gh-actions]
+    python =
+        3.10: 310, format
+"""

@@ -53,7 +53,7 @@ Rarities:
 Common: 9
 ```
 
-You can use the `-l` or `--level` option followed by the party's level or two levels in the format X-Y to compare the items' total value to the one PCs are supposed to come across throughout the level or a range of levels you input. These expected values come from the Treasure by Level table on Page 508 of the Core Rulebook (which you can find [here](https://2e.aonprd.com/Rules.aspx?ID=581)).
+You can use the `-l` or `--level` option followed by the party's level or two levels in the format X-Y to compare the items' total value to the one PCs are supposed to come across throughout the level or range of levels you input. These expected values come from the Treasure by Level table on Page 508 of the Core Rulebook (which you can find [here](https://2e.aonprd.com/Rules.aspx?ID=581)).
 
 For instance, running
 
@@ -70,7 +70,7 @@ Difference:
 
 ### Other options
 
-`-c` or `--currency` followed by a number adds an arbitrary amount of gp to the calculation.
+`-c` or `--currency` followed by a number adds an arbitrary amount of gp to the calculation
 
 `-f` or `--format` prints helpful information on how correctly format the text file
 
