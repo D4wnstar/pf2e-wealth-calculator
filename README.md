@@ -1,4 +1,5 @@
 # PF2e Wealth Calculator
+![tests-badge](https://github.com/D4wnstar/pf2e-wealth-calculator/actions/workflows/tests.yml/badge.svg)
 
 A simple tool to quickly get information on large batches of items for Pathfinder Second Edition.
 
