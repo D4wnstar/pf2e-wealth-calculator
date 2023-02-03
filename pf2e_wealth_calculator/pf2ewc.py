@@ -56,7 +56,7 @@ class ItemInfo:
 
     name: str = "item"
     price: Money = Money()
-    category: str | None = None
+    category: str = ""
     level: int = 0
     rarity: str = "common"
 
@@ -369,8 +369,6 @@ def get_price(price_str: str, amount: int) -> Money:
     Get the price of the given item.
 
     price_str is a string that includes the price and coin type (i.e. "12 gp").
-
-    amount is an integer that multiplies the price of the given item before adding it.
     """
 
     # Fetch price and coin type through regex
@@ -398,6 +396,8 @@ def get_price(price_str: str, amount: int) -> Money:
 
 
 def console_entry_point(input_file, level, currency, noconversion):
+    """Primary entry point for the script."""
+
     # User-defined loot
     loot = pd.read_csv(input_file, names=["name", "amount"])
     loot["name"] = loot["name"].apply(lambda name: name.lower())
@@ -501,7 +501,8 @@ def console_entry_point(input_file, level, currency, noconversion):
     print(":")
     print(
         textwrap.dedent(
-            f"""{money["total"].cp} cp
+            f"""\
+            {money["total"].cp} cp
             {money["total"].sp} sp
             {money["total"].gp} gp
 
@@ -540,8 +541,29 @@ def console_entry_point(input_file, level, currency, noconversion):
     for rar, amount in rarities.items():
         print(f"    {rar.capitalize()}: {amount}")
 
-    sys.exit(0)
 
+def find_single_item(item_name: str):
+    """Fetches and prints information on a single item instead of a table."""
+
+    if "+1" in item_name or "+2" in item_name or "+3" in item_name:
+        item = rune_calculator(item_name, 1)
+    else:
+        item = parse_database(item_name, 1)
+    
+    if item.price.cp != 0:
+        print(f"Value: {item.price.cp}cp")
+    elif item.price.sp != 0:
+        print(f"Value: {item.price.sp}sp")
+    elif item.price.gp != 0:
+        print(f"Value: {item.price.gp}gp")
+    
+    print(textwrap.dedent(
+        f"""\
+        Level: {item.level}
+        Category: {item.category.capitalize()}
+        Rarity: {item.rarity.capitalize()}\
+        """
+    ))
 
 def entry_point():
     parser = argparse.ArgumentParser(
@@ -578,6 +600,12 @@ def entry_point():
         "--no-conversion",
         action="store_true",
         help="prevent conversion of coins into gp",
+    )
+    parser.add_argument(
+        "-i",
+        "--item",
+        type=str,
+        help="run the script with only the specified item"
     )
     args = parser.parse_args()
 
@@ -638,8 +666,13 @@ def entry_point():
         )
         sys.exit(0)
 
+    if args.item:
+        find_single_item(args.item)
+        sys.exit(0)
+
     if os.path.isfile(args.input) and args.input.endswith(".txt"):
         console_entry_point(args.input, args.level, args.currency, args.no_conversion)
+        sys.exit(0)
     else:
         print("Please input a valid text file")
         sys.exit(1)
