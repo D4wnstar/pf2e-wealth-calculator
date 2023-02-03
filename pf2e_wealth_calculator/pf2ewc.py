@@ -3,7 +3,7 @@ from pf2e_wealth_calculator.dataframes import itemlist, rune_replacer, tbl, mate
 import pandas as pd
 import re
 from difflib import get_close_matches
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import sys
 import os
@@ -80,7 +80,7 @@ class ItemInfo:
     """Data structure that contains information on a given item."""
 
     name: str = "item"
-    price: Money = Money()
+    price: Money = field(default_factory=Money)
     category: str = ""
     level: int = 0
     rarity: str = "common"

@@ -57,8 +57,6 @@ legacy_tox_ini = """
     [tox]
     requires = tox >= 4
     env_list =
-        py38
-        py39
         py310
         py311
         format
@@ -80,8 +78,6 @@ legacy_tox_ini = """
 
     [gh-actions]
     python =
-        3.8: py38
-        3.9: py39
         3.10: py310, format
         3.11: py311
 """
