@@ -133,7 +133,9 @@ def test_parse_precious(item_name, amount, item_info):
             '+1 resilient invisibility padded armor', pf.Money(sp=2, gp=1000), 'armor', 8, 'common')),
         # Precious material and grades
         ('+2 greater resilient bitter greater shadow djezet scale mail standard', 1, pf.ItemInfo(
-            '+2 greater resilient bitter greater shadow djezet scale mail (standard-grade)', pf.Money(gp=7085), 'armor', 14, 'rare'))
+            '+2 greater resilient bitter greater shadow djezet scale mail (standard-grade)', pf.Money(gp=7085), 'armor', 14, 'rare')),
+        # Handwraps
+        ('+1 striking frost handwraps of mighty blows', 1, pf.ItemInfo('+1 striking frost handwraps of mighty blows', pf.Money(gp=600), 'weapons', 8, 'common'))
     ]
 )
 def test_runes(item_name, amount, item_info):

@@ -130,6 +130,12 @@ def parse_database(
     # Check if the first one or two words denote a precious material
     item_name, material, grade = get_material_grade(item_name.split(), materials)
 
+    # Special case for handwraps which don't have a real listing
+    # They're technically "worn items", not "weapons", but using the right category
+    # breaks potency rune price calculation
+    if item_name == "handwraps of mighty blows":
+        return ItemInfo("handwraps of mighty blows", category="weapons")
+
     # If category is restricted, check only items from that category
     if restrict_cat:
         filtered_list = itemlist.set_index('category')
@@ -174,8 +180,7 @@ def parse_database(
         material_name = f"{material} {category} {grade}"
 
         # Add the price of the precious material
-        item_price = get_price(
-            df[df["name"] == material_name]["price"].item(), amount)
+        item_price = get_price(df[df["name"] == material_name]["price"].item(), amount)
 
         # Materials have their own level and rarity, pick the highest ones
         material_level = df[df["name"] == material_name]["level"].item()
@@ -249,6 +254,7 @@ def rune_calculator(
     highest_rarity = "common"
     potency_rune = "0"
     skip_cycle = False
+    material_flag = False
 
     item_runes = item_name.split()  # Break up the name into single runes
 
@@ -277,19 +283,17 @@ def rune_calculator(
             rune_info = parse_database(rune, amount, quiet=True)
             running_sum += rune_info.price
             highest_level = rune_info.level if rune_info.level > highest_level else highest_level
-            highest_rarity = get_higher_rarity(
-                highest_rarity, rune_info.rarity)
+            highest_rarity = get_higher_rarity(highest_rarity, rune_info.rarity)
             skip_cycle = True
             continue
 
-        # Replace the name if necessary. If it is replaced, replace and short-circuit cycle
+        # Replace the name if necessary. If it is replaced, short-circuit
         rune_row = rune_names[rune_names["name"] == rune]
         if not rune_row.empty and len(rune_row["replacer"].item()) > 0:
             rune_info = parse_database(rune_row["replacer"].item(), amount, quiet=True)
             running_sum += rune_info.price
             highest_level = rune_info.level if rune_info.level > highest_level else highest_level
-            highest_rarity = get_higher_rarity(
-                highest_rarity, rune_info.rarity)
+            highest_rarity = get_higher_rarity(highest_rarity, rune_info.rarity)
             skip_cycle = True
             continue
         elif not rune_row.empty and len(rune_row["replacer"].item()) == 0:
@@ -300,9 +304,9 @@ def rune_calculator(
             rune_info = parse_database(rune, amount, df=df, materials=materials, restrict_cat='runes', quiet=True)
         else:
             rune_info = ItemInfo(rune, category="error")
+            material_flag = True
 
-        # If it's not in the list, or it's a material, it might be a multi-word item name or a precious material
-        # It's guaranteed to not be a rune because of the rune name replacer
+        # If it's not a rune, use the remainder of the name to find the correct base item
         if rune_info.category == "error":
             rune_info = check_multiword_item(rune, amount, item_runes, cur_index)
             if rune_info.category != "error":
@@ -311,8 +315,7 @@ def rune_calculator(
                 running_sum += rune_info.price
                 break
             else:
-                print(
-                    f"WARNING: No results for {item_name}. Skipping price calculation.")
+                print(f"WARNING: No results for {item_name}. Skipping price calculation.")
                 return ItemInfo(item_name, category="error")
         else:
             highest_level = rune_info.level if rune_info.level > highest_level else highest_level
@@ -322,10 +325,12 @@ def rune_calculator(
         running_sum += rune_info.price
 
     # Manually change the grade tag into the standardized form
-    for grade in ["low", "standard", "high"]:
-        if grade in item_runes[-1]:
-            item_runes[-1] = f"({grade}-grade)"
-            item_name = " ".join(item_runes)
+    if material_flag:
+        for grade in ("low", "standard", "high"):
+            if grade in item_runes[-1]:
+                item_runes[-1] = f"({grade}-grade)"
+                item_name = " ".join(item_runes)
+                break
 
     # Add potency rune price
     add_to_sum, highest_level = get_potency_rune_stats(
@@ -458,8 +463,11 @@ def console_entry_point(input_file, level, currency, noconversion):
 
     money["total"] = get_total(money.values())
 
+    print("Total value", end="")
+    if not noconversion:
+        print(" (converted in gp)", end="")
+    print(":")
     print(textwrap.dedent(f"""\
-            Total value (converted in gp):
                 {money["total"].cp} cp
                 {money["total"].sp} sp
                 {money["total"].gp} gp
@@ -484,7 +492,10 @@ def console_entry_point(input_file, level, currency, noconversion):
 
     print("\nCategories:")
     for cat, amount in categories.items():
-        print(f"    {cat.capitalize()}: {amount}")
+        if cat:
+            print(f"    {cat.capitalize()}: {amount}")
+        else:
+            print(f"    None: {amount}")
 
     print("\nRarities:")
     for rar, amount in rarities.items():
@@ -570,35 +581,3 @@ def entry_point():
 
 if __name__ == "__main__":
     entry_point()
-
-
-# -----------------#
-#   MAJOR ISSUES   #
-# -----------------#
-# Nothing... FOR NOW
-
-
-# TODO
-# [DONE] Allow adding an arbitrary amount of gold for plain wealth
-# [DONE] Check what happens if you add a comma but no quantity (i.e. tindertwig, )
-# [DONE] Add support for dynamic rune price calculation (i.e. auto-calculate price of +1 striking keen warhammer). Maybe use that all items with runes must start with a +
-# [DONE] Add support for calculating wealth only for a specific (range of) level(s), instead of all of them up to the user input
-# [DONE] Maybe change item_info type to dict or custom data structure
-# [DONE] Print how many items of a given level, category and rarity there are
-# Add different verbosity levels
-# Add support for multiple file input, which calculates the value of all of the items in every file. Useful, for instance, to keep loot for each level or area separate
-# [DONE] Add description of how levels/level ranges work in the help description
-# Add switch to autocorrect spelling mistakes instead of just suggest corrections. Kind of a messy addition though
-# Maybe change category in ItemInfo from str to Enum (from the Enum library)
-# Add a check to see if the text file is formatted properly and direct the user to use pf2ewc -f to get instructions (currently has odd behavior)
-# Replace all the formatting stuff (fundamental rune, rune prefix handling, etc.) in rune_calculator to happen outside of the for loop
-# [DONE] Add switch to avoid conversion to gp
-# Setup tox
-# [DONE] Make level input optional
-
-# KNOWN ISSUES:
-# Handwraps of mighty blows don't have a listing in the item list without runes: add special warning about that
-# Wands and scrolls don't have a listing, however their naming scheme is standardized so they can be automated
-# Add dragon's breath rune and called rune handling
-# Precious item cost is wrong as it doesn't take Bulk into account. Currently unfixable because I can't get new CSV tables from the AoN
-# If money is not converted, gp calculation are off by the unconverted amount
