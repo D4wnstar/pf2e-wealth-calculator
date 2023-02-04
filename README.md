@@ -5,7 +5,7 @@ A simple tool to quickly get information on large batches of items, runes and pr
 
 ## Prerequisites
 
-- Python 3.10 or above
+- Python 3.9 or above
 
 ## Usage
 

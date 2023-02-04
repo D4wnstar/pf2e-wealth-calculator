@@ -10,6 +10,8 @@ import os
 import argparse
 import textwrap
 
+import typing  # for backwards compatibility to python 3.9
+
 
 class OriginError(Exception):
     """Mismatched origin in operation between Money objects."""
@@ -99,7 +101,7 @@ def get_higher_rarity(rar1: str, rar2: str) -> str:
 
 def get_material_grade(
     name_split: list[str], materials: list[str] = materials
-) -> tuple[str, str | None, str | None]:
+) -> tuple[str, typing.Union[str, None], typing.Union[str, None]]:
     """Get the grade and material from an item's name, if present."""
 
     if name_split[0] in materials:
@@ -137,7 +139,7 @@ def parse_database(
     item_name: str,
     amount: int,
     *,
-    restrict_cat: str | None = None,
+    restrict_cat: typing.Union[str, None] = None,
     df: pd.DataFrame = itemlist,
     materials: list[str] = materials,
     quiet: bool = False,
@@ -222,7 +224,7 @@ def parse_database(
 
 
 def get_potency_rune_stats(
-    cached_rune: str, category: str | None, level: int
+    cached_rune: str, category: typing.Union[str, None], level: int
 ) -> tuple[Money, int]:
     "Use the cached potency rune to add the appropriate price, depending on category"
 
@@ -431,7 +433,7 @@ def console_entry_point(input_file, level, currency, noconversion):
     money = {"item": Money(origin="item"), "currency": Money(origin="currency")}
 
     levels: dict[str, int] = {}
-    categories: dict[str | None, int] = {}
+    categories: dict[typing.Union[str, None], int] = {}
     rarities: dict[str, int] = {}
 
     # Get the price for each item
