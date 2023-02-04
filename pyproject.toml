@@ -2,14 +2,14 @@
 name = "pf2e-wealth-calculator"
 version = "0.1.0"
 description = "A simple tool for Pathfinder 2e that calculates how much your loot is worth."
-authors = ["D4wnstar <104584158+D4wnstar@users.noreply.github.com>"]
+authors = ["D4wnstar <samvignoli@proton.me>"]
 readme = "README.md"
 packages = [{include = "pf2e_wealth_calculator"}]
 license = "GPL-3.0-or-later"
 repository = "https://github.com/D4wnstar/pf2e-wealth-calculator"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.10"
 pandas = "^1.5.2"
 
 [tool.poetry.group.test]
@@ -23,12 +23,6 @@ tox = "^4.4.4"
 
 [tool.poetry.scripts]
 pf2ewc = "pf2e_wealth_calculator.pf2ewc:entry_point"
-
-[[tool.poetry.source]]
-name = "testpypi"
-url = "https://test.pypi.org/simple/"
-default = false
-secondary = false
 
 [build-system]
 requires = ["poetry-core"]
@@ -49,7 +43,6 @@ warn_unused_configs = true
 no_implicit_reexport = true
 
 [tool.pyright]
-exclude = "pf2e_wealth_calculator/dataframes.py"
 reportUnboundVariable = false
 
 [tool.tox]
