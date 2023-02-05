@@ -7,6 +7,17 @@ A simple tool to quickly get information on large batches of items, runes and pr
 
 - Python 3.9 or above
 
+## Installation
+
+- Python (Recommended method)
+    - If you already have Python installed, simply run `pip install pf2e-wealth-calculator`
+    - > If you encounter an error, try changing `pip` to `pip3`.
+    - If you don't already have Python installed, you can get it from the [official website](https://www.python.org/downloads/), your operating system's package manager or the Microsoft Store.
+
+- Prebuilt Windows Executable
+    - If you are on Windows and don't want to install Python, you can download the executable file directly from the [Releases Tab](https://github.com/D4wnstar/pf2e-wealth-calculator/releases).
+    - If you choose this method, don't double click on the executable file to use it! It won't work. Instead, place it in a folder of your preference, then open a terminal in that folder (in Windows 11 you can just right click on the folder and press "Open in Terminal"), then follow the same instructions under Usage, except you change every `pf2ewc` to `.\pf2ewc`.
+
 ## Usage
 
 There's two ways to use this script: either pass in an item name directly or make a text file containing a list of items and how many of each you want.
