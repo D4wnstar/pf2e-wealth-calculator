@@ -1,0 +1,78 @@
+[tool.poetry]
+name = "pf2e-wealth-calculator"
+version = "0.1.0"
+description = "A simple tool for Pathfinder 2e that calculates how much your loot is worth."
+authors = ["D4wnstar <samvignoli@proton.me>"]
+readme = "README.md"
+packages = [{include = "pf2e_wealth_calculator"}]
+license = "GPL-3.0-or-later"
+repository = "https://github.com/D4wnstar/pf2e-wealth-calculator"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pandas = "^1.5.2"
+
+[tool.poetry.group.test]
+optional = true
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.1.2"
+mypy = "^0.981"
+black = "^22.6"
+tox = "^4.4.4"
+
+[tool.poetry.scripts]
+pf2ewc = "pf2e_wealth_calculator.pf2ewc:entry_point"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+mypy_path = "pf2e_wealth_calculator"
+check_untyped_defs = true
+disallow_any_generics = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+no_implicit_reexport = true
+
+[tool.pyright]
+reportUnboundVariable = false
+
+[tool.tox]
+legacy_tox_ini = """
+    [tox]
+    requires = tox >= 4
+    env_list =
+        py39
+        py310
+        py311
+        format
+    isolated_build = True
+
+    [testenv]
+    description = run unit tests
+    deps = 
+        pytest >= 7
+        pandas >= 1.5
+    commands = 
+        pytest {posargs}
+    
+    [testenv:format]
+    description = run black on the current folder
+    deps = black>=22.6
+    skip_install = true
+    commands = black .
+
+    [gh-actions]
+    python =
+        3.9: py39
+        3.10: py310, format
+        3.11: py311
+"""
