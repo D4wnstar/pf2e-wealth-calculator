@@ -16,7 +16,7 @@ A simple tool to quickly get information on large batches of items, runes and pr
 
 - Prebuilt Windows Executable
     - If you are on Windows and don't want to install Python, you can download the executable file directly from the [Releases Tab](https://github.com/D4wnstar/pf2e-wealth-calculator/releases).
-    - If you choose this method, don't double click on the executable file to use it! It won't work. Instead, place it in a folder of your preference, then open a terminal in that folder (in Windows 11 you can just right click on the folder and press "Open in Terminal"). Follow the same instructions under Usage, except you change every `pf2ewc` to the name of the executable without `.exe` and prefixed by `.\`. For example, if you downloaded `pf2ewc-0.1.0.exe`, you would use `.\pf2ewc-0.1.0`
+    - If you choose this method, don't double click on the executable file to use it! It won't work. Instead, place it in a folder of your preference, then open a terminal in that folder (in Windows 11 you can just right click on the folder and press "Open in Terminal"). Follow the same instructions under Usage, except you change every `pf2ewc` to the name of the executable prefixed by `.\`. For example, if you downloaded `pf2ewc-0.1.0.exe`, you can use `.\pf2ewc-0.1.0.exe`
 
 ## Usage
 
