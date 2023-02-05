@@ -164,3 +164,4 @@ cython_debug/
 pf2e-wealth-calculator_old.py
 *.txt
 stuff.py
+*.ps1

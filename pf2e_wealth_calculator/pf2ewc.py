@@ -540,16 +540,16 @@ def console_entry_point(input_file, level, currency, noconversion):
         print("Difference:")
         if total_value - money["total"].gp < 0:
             print(
-                f"    {abs(total_value - money['total'].gp)} gp too much (Expected {total_value} gp)\n"
+                f"    {abs(total_value - money['total'].gp)} gp too much (Expected {total_value} gp)"
             )
         elif total_value - money["total"].gp > 0:
             print(
-                f"    {abs(total_value - money['total'].gp)} gp too little (Expected {total_value} gp)\n"
+                f"    {abs(total_value - money['total'].gp)} gp too little (Expected {total_value} gp)"
             )
         else:
-            print(f"    None (Expected {total_value} gp)\n")
+            print(f"    None (Expected {total_value} gp)")
 
-    print("Levels:")
+    print("\nLevels:")
     for lvl, amount in levels.items():
         print(f"    Level {lvl}: {amount}")
 
@@ -575,12 +575,12 @@ def find_single_item(item_name: str):
     else:
         item = parse_database(item_name, 1)
 
-    if item.price.cp != 0:
-        print(f"Value: {item.price.cp}cp")
+    if item.price.gp != 0:
+        print(f"Value: {item.price.gp}gp")
     elif item.price.sp != 0:
         print(f"Value: {item.price.sp}sp")
-    elif item.price.gp != 0:
-        print(f"Value: {item.price.gp}gp")
+    elif item.price.cp != 0:
+        print(f"Value: {item.price.cp}cp")
 
     print(
         textwrap.dedent(
@@ -630,7 +630,10 @@ def entry_point():
         help="prevent conversion of coins into gp",
     )
     parser.add_argument(
-        "-i", "--item", type=str, help="run the script with only the specified item"
+        "-i",
+        "--item",
+        type=str,
+        help="run the script with only the specified item and exit",
     )
     args = parser.parse_args()
 
@@ -699,7 +702,7 @@ def entry_point():
         console_entry_point(args.input, args.level, args.currency, args.no_conversion)
         sys.exit(0)
     else:
-        print("Please input a valid text file")
+        print("Please input a valid text file or use the -i option")
         sys.exit(1)
 
 
