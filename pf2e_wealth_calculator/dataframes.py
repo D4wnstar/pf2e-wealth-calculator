@@ -16,14 +16,19 @@ rune_replacer = pd.read_csv(
 # Treasure by level table
 tbl = pd.read_csv(_pathfinder("tables/treasurebylevel.csv"))
 # Precious materials
-with open(_pathfinder("tables/materials.csv")) as _mats:
+with open(_pathfinder("tables/materials.csv"), "r") as _mats:
     materials = _mats.readlines()
     materials = [mat.rstrip("\n") for mat in materials]
 
+
 # Make all names lowercase
 itemlist.columns = itemlist.columns.str.lower()
-for col in ["name", "rarity", "category"]:
+itemlist["subcategory"].fillna("None", inplace=True)
+for col in ["name", "rarity", "category", "subcategory"]:
     itemlist[col] = itemlist[col].apply(lambda name: name.lower())
+
+# Replace NaN bulk with zero bulk
+itemlist["bulk"].fillna("0", inplace=True)
 
 # Fill NaN values with empty strings
 rune_replacer["replacer"].fillna("", inplace=True)

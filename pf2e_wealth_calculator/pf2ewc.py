@@ -83,9 +83,11 @@ class ItemInfo:
 
     name: str = "item"
     price: Money = field(default_factory=Money)
-    category: str = ""
+    category: str = "none"
+    subcategory: str = "none"
     level: int = 0
     rarity: str = "common"
+    bulk: typing.Union[int, str] = 0
 
 
 def get_higher_rarity(rar1: str, rar2: str) -> str:
@@ -152,7 +154,7 @@ def parse_database(
     if re.match(r"\d+([,\.]\d*)?\s*(cp|sp|gp)", item_name) is not None:
         currency_value = get_price(item_name, amount)
         currency_value.origin = "currency"
-        return ItemInfo(item_name, currency_value, "currency")
+        return ItemInfo(item_name, currency_value, "currency", "none")
 
     # Check if the first one or two words denote a precious material
     item_name, material, grade = get_material_grade(item_name.split(), materials)
@@ -161,7 +163,11 @@ def parse_database(
     # They're technically "worn items", not "weapons", but using the right category
     # breaks potency rune price calculation
     if item_name == "handwraps of mighty blows":
-        return ItemInfo("handwraps of mighty blows", category="weapons")
+        return ItemInfo(
+            "handwraps of mighty blows",
+            category="weapons",
+            subcategory="other worn items",
+        )
 
     # If category is restricted, check only items from that category
     if restrict_cat:
@@ -178,18 +184,26 @@ def parse_database(
             suggestion = "".join(
                 get_close_matches(item_name.strip(), df["name"].tolist(), 1, 0)
             )
-            print(f'WARNING: Ignoring item "{item_name}". Did you mean "{suggestion}"?')
+
+            if item_name != suggestion:
+                print(
+                    f'WARNING: Ignoring item "{item_name}". Did you mean "{suggestion}"?'
+                )
 
         return ItemInfo(item_name, category="error")
 
     # Fix shield name including "steel" or "wooden" even if it's made of a precious material
-    if "shield" in item_name and not "tower" in item_name and material:
+    if material and "shield" in item_name and not "tower" in item_name:
         item_name = "shield"
 
     # Get item stats
     item_category = item_row["category"].item() if not restrict_cat else restrict_cat
+    item_subcategory = item_row["subcategory"].item()
     item_level = item_row["level"].item()
     item_rarity = item_row["rarity"].item()
+    item_bulk = item_row["bulk"].item()
+    if item_bulk.isdigit():
+        item_bulk = int(item_bulk)
 
     # Get item price
     if not material:
@@ -220,7 +234,15 @@ def parse_database(
         material_rarity = df[df["name"] == material_name]["rarity"].item()
         item_rarity = get_higher_rarity(material_rarity, item_rarity)
 
-    return ItemInfo(item_name, item_price, item_category, item_level, item_rarity)
+    return ItemInfo(
+        item_name,
+        item_price,
+        item_category,
+        item_subcategory,
+        item_level,
+        item_rarity,
+        item_bulk,
+    )
 
 
 def get_potency_rune_stats(
@@ -333,14 +355,7 @@ def rune_calculator(
 
         # Find the rune in the list of runes (if present)
         if rune not in materials:
-            rune_info = parse_database(
-                rune,
-                amount,
-                df=df,
-                materials=materials,
-                restrict_cat="runes",
-                quiet=True,
-            )
+            rune_info = parse_database(rune, amount, df=df, restrict_cat="runes")
         else:
             rune_info = ItemInfo(rune, category="error")
             material_flag = True
@@ -385,7 +400,13 @@ def rune_calculator(
     )
     running_sum += add_to_sum
     return ItemInfo(
-        item_name, running_sum, rune_info.category, highest_level, highest_rarity
+        item_name,
+        running_sum,
+        rune_info.category,
+        rune_info.subcategory,
+        highest_level,
+        highest_rarity,
+        rune_info.bulk,
     )
 
 
@@ -397,8 +418,11 @@ def get_price(price_str: str, amount: int = 1) -> Money:
     """
 
     # Fetch price and coin type through regex
-    price_match = re.search(r"\d*(,\d*)?", price_str)
-    type_match = re.search(r"cp|sp|gp", price_str)
+    try:
+        price_match = re.search(r"\d*(,\d*)?", price_str)
+        type_match = re.search(r"cp|sp|gp", price_str)
+    except TypeError:
+        return Money()
 
     # Check which kind of coin it is (if any)
     if type_match is not None and price_match is not None:
@@ -434,6 +458,7 @@ def console_entry_point(input_file, level, currency, noconversion):
 
     levels: dict[str, int] = {}
     categories: dict[typing.Union[str, None], int] = {}
+    subcategories: dict[typing.Union[str, None], int] = {}
     rarities: dict[str, int] = {}
 
     # Get the price for each item
@@ -456,6 +481,11 @@ def console_entry_point(input_file, level, currency, noconversion):
             categories[curr_item.category] += amount
         except KeyError:
             categories[curr_item.category] = amount
+
+        try:
+            subcategories[curr_item.subcategory] += amount
+        except KeyError:
+            subcategories[curr_item.subcategory] = amount
 
         try:
             rarities[curr_item.rarity] += amount
@@ -560,6 +590,13 @@ def console_entry_point(input_file, level, currency, noconversion):
         else:
             print(f"    None: {amount}")
 
+    print("\nSubcategories:")
+    for subcat, amount in subcategories.items():
+        if subcat:
+            print(f"    {subcat.capitalize()}: {amount}")
+        else:
+            print(f"    None: {amount}")
+
     print("\nRarities:")
     for rar, amount in rarities.items():
         print(f"    {rar.capitalize()}: {amount}")
@@ -581,16 +618,17 @@ def find_single_item(item_name: str):
         print(f"Value: {item.price.sp}sp")
     elif item.price.cp != 0:
         print(f"Value: {item.price.cp}cp")
+    else:
+        print("Value: Undefined")
 
-    print(
-        textwrap.dedent(
-            f"""\
-        Level: {item.level}
-        Category: {item.category.capitalize()}
-        Rarity: {item.rarity.capitalize()}\
-        """
-        )
-    )
+    print(f"Level: {item.level}")
+    print(f"Category: {item.category.capitalize()}")
+    if item.subcategory:
+        print(f"Subcategory: {item.subcategory.capitalize()}")
+    else:
+        print("Subcategory: None")
+    print(f"Rarity: {item.rarity.capitalize()}")
+    print(f"Bulk: {item.bulk}")
 
 
 def entry_point():
