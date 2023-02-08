@@ -114,15 +114,17 @@ Rarities:
 
 ## Options
 
+`-d` or `--detailed` shows how many items of a given level, category, subcategory and rarity there are within the given input file.
+
 `-l` or `--level` followed by a number or two numbers in the X-Y format makes the calculator compare the total value of the input items to the expected total value that a party of four is supposed to find throughout the specified level(s).
 
 `-c` or `--currency` followed by a number adds an arbitrary amount of gp to the calculation.
 
-`-f` or `--format` prints helpful information on how to correctly format the text file.
+`-f` or `--format` shows helpful information on how to correctly format the text file.
 
 `-n` or `--no-conversion` prevents coins from being converted to gp automatically (some calculations use gp only, so expect values to be slightly different from what you'd expect).
 
-`-i` or `--item` followed by the name of an item allows you to run the script without creating a file. If the item name is composed of multiple words, you must put it in quotation marks, like `-i "tengu gale blade"`.
+`-i` or `--item` followed by the name of an item allows you to run the script without creating a file. If the item name is composed of multiple words, you must put it in quotation marks, like `-i "tengu gale blade"`. Ignores other options.
 
 ## Known issues
 
