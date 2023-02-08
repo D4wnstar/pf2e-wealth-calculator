@@ -355,7 +355,7 @@ def rune_calculator(
 
         # Find the rune in the list of runes (if present)
         if rune not in materials:
-            rune_info = parse_database(rune, amount, df=df, restrict_cat="runes")
+            rune_info = parse_database(rune, amount, restrict_cat="runes")
         else:
             rune_info = ItemInfo(rune, category="error")
             material_flag = True
@@ -457,8 +457,8 @@ def console_entry_point(input_file, level, currency, noconversion):
     money = {"item": Money(origin="item"), "currency": Money(origin="currency")}
 
     levels: dict[str, int] = {}
-    categories: dict[typing.Union[str, None], int] = {}
-    subcategories: dict[typing.Union[str, None], int] = {}
+    categories: dict[str, int] = {}
+    subcategories: dict[str, int] = {}
     rarities: dict[str, int] = {}
 
     # Get the price for each item
@@ -585,17 +585,11 @@ def console_entry_point(input_file, level, currency, noconversion):
 
     print("\nCategories:")
     for cat, amount in categories.items():
-        if cat:
-            print(f"    {cat.capitalize()}: {amount}")
-        else:
-            print(f"    None: {amount}")
+        print(f"    {cat.capitalize()}: {amount}")
 
     print("\nSubcategories:")
     for subcat, amount in subcategories.items():
-        if subcat:
-            print(f"    {subcat.capitalize()}: {amount}")
-        else:
-            print(f"    None: {amount}")
+        print(f"    {subcat.capitalize()}: {amount}")
 
     print("\nRarities:")
     for rar, amount in rarities.items():
@@ -621,14 +615,17 @@ def find_single_item(item_name: str):
     else:
         print("Value: Undefined")
 
-    print(f"Level: {item.level}")
-    print(f"Category: {item.category.capitalize()}")
-    if item.subcategory:
-        print(f"Subcategory: {item.subcategory.capitalize()}")
-    else:
-        print("Subcategory: None")
-    print(f"Rarity: {item.rarity.capitalize()}")
-    print(f"Bulk: {item.bulk}")
+    print(
+        textwrap.dedent(
+            f"""\
+        Level: {item.level}
+        Category: {item.category.capitalize()}
+        Subcategory: {item.subcategory.capitalize()}
+        Rarity: {item.rarity.capitalize()}
+        Bulk: {item.bulk}\
+        """
+        )
+    )
 
 
 def entry_point():
@@ -641,6 +638,12 @@ def entry_point():
         nargs="?",
         default="",
         help="the name of the text file containing the loot",
+    )
+    parser.add_argument(
+        "-i",
+        "--item",
+        type=str,
+        help="run the script with only the specified item and exit",
     )
     parser.add_argument(
         "-l",
@@ -666,12 +669,6 @@ def entry_point():
         "--no-conversion",
         action="store_true",
         help="prevent conversion of coins into gp",
-    )
-    parser.add_argument(
-        "-i",
-        "--item",
-        type=str,
-        help="run the script with only the specified item and exit",
     )
     args = parser.parse_args()
 
