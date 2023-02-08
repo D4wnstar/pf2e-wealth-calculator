@@ -30,7 +30,7 @@ pf2ewc -i "your item here"
 
 Alternatively, create and write a text file with two comma-separated columns.
 
-In the first one, write the names of the items.
+In the first column, write the names of the items.
 
 In the second, write how many of each item you want. This can be omitted, in which case the default is 1.
 
@@ -53,26 +53,13 @@ If you used the previous items, it should produce the following output:
 
 ```
 Total value (converted in gp):
-0 cp
-4 sp
-29 gp
+  - 0 cp
+  - 4 sp
+  - 29 gp
 
 Of which:
-Items: 17 gp
-Currency: 12 gp
-
-Levels:
-Level 0: 4
-Level 1: 5
-
-Categories:
-Weapons: 1
-Alchemical items: 5
-Adventuring gear: 2
-Currency: 1
-
-Rarities:
-Common: 9
+  - Items: 17 gp
+  - Currency: 12 gp
 ```
 
 You can use the `-l` or `--level` option followed by the party's level or two levels in the format X-Y (e.g. 2-5) to compare the items' total value to the one PCs are supposed to come across throughout the level or range of levels you input. These expected values come from the Treasure by Level table on Page 508 of the Core Rulebook (which you can find [here](https://2e.aonprd.com/Rules.aspx?ID=581)).
@@ -87,7 +74,31 @@ would add the following lines to the previous output:
 
 ```
 Difference:
-146 gp too little (Expected 175 gp)
+  - 146 gp too little (Expected 175 gp)
+```
+
+If you want a detailed breakdown of what you're giving to your players, then you can use the `-d` or `--detailed` option, which counts the levels, categories, subcategories and rarities of all of the items you input.
+
+Using the same items as before with the `-d` option would add these line to the output:
+
+```
+Levels:
+  - Level 0: 4
+  - Level 1: 5
+
+Categories:
+  - Weapons: 1
+  - Alchemical items: 5
+  - Adventuring gear: 2
+  - Currency: 1
+
+Subcategories:
+  - Base weapons: 1
+  - Alchemical tools: 5
+  - None: 3
+
+Rarities:
+  - Common: 9
 ```
 
 ## Formatting guidelines
@@ -121,4 +132,4 @@ Difference:
 
 ## License
 
-This project is released under the [GNU GPLv3 License](https://github.com/D4wnstar/pf2e-wealth-calculator/blob/develop/LICENSE).
+This project is released under the [GNU GPLv3 License](https://github.com/D4wnstar/pf2e-wealth-calculator/blob/master/LICENSE). The data this program parses through is taken from the [Archives of Nethys](https://2e.aonprd.com/) and is available for use under the [Open Game License v1.0a](https://github.com/D4wnstar/pf2e-wealth-calculator/blob/master/OGL).

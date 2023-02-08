@@ -442,7 +442,7 @@ def get_price(price_str: str, amount: int = 1) -> Money:
         return Money()
 
 
-def console_entry_point(input_file, level, currency, noconversion):
+def console_entry_point(input_file, level, currency, detailed, noconversion):
     """Primary entry point for the script."""
 
     # User-defined loot
@@ -548,53 +548,55 @@ def console_entry_point(input_file, level, currency, noconversion):
 
     money["total"] = get_total(money.values())
 
-    print("Total value", end="")
+    print("\nTotal value", end="")
     if not noconversion:
         print(" (converted in gp)", end="")
     print(":")
     print(
         textwrap.dedent(
             f"""\
-            {money["total"].cp} cp
-            {money["total"].sp} sp
-            {money["total"].gp} gp
+          - {money["total"].cp} cp
+          - {money["total"].sp} sp
+          - {money["total"].gp} gp
 
         Of which:
-            Items: {money["item"].gp} gp
-            Currency: {money["currency"].gp} gp
+          - Items: {money["item"].gp} gp
+          - Currency: {money["currency"].gp} gp\
         """
         )
     )
 
     if level:
-        print("Difference:")
+        print("\nDifference:")
         if total_value - money["total"].gp < 0:
             print(
-                f"    {abs(total_value - money['total'].gp)} gp too much (Expected {total_value} gp)"
+                f"  - {abs(total_value - money['total'].gp)} gp too much (Expected {total_value} gp)"
             )
         elif total_value - money["total"].gp > 0:
             print(
-                f"    {abs(total_value - money['total'].gp)} gp too little (Expected {total_value} gp)"
+                f"  - {abs(total_value - money['total'].gp)} gp too little (Expected {total_value} gp)"
             )
         else:
-            print(f"    None (Expected {total_value} gp)")
+            print(f"  - None (Expected {total_value} gp)")
 
-    print("\nLevels:")
-    for lvl, amount in levels.items():
-        print(f"    Level {lvl}: {amount}")
+    if detailed:
+        print("\nLevels:")
+        for lvl, amount in levels.items():
+            print(f"  - Level {lvl}: {amount}")
 
-    print("\nCategories:")
-    for cat, amount in categories.items():
-        print(f"    {cat.capitalize()}: {amount}")
+        print("\nCategories:")
+        for cat, amount in categories.items():
+            print(f"  - {cat.capitalize()}: {amount}")
 
-    print("\nSubcategories:")
-    for subcat, amount in subcategories.items():
-        print(f"    {subcat.capitalize()}: {amount}")
+        print("\nSubcategories:")
+        for subcat, amount in subcategories.items():
+            print(f"  - {subcat.capitalize()}: {amount}")
 
-    print("\nRarities:")
-    for rar, amount in rarities.items():
-        print(f"    {rar.capitalize()}: {amount}")
+        print("\nRarities:")
+        for rar, amount in rarities.items():
+            print(f"  - {rar.capitalize()}: {amount}")
 
+    print()
 
 def find_single_item(item_name: str):
     """Fetches and prints information on a single item instead of a table."""
@@ -657,6 +659,12 @@ def entry_point():
         type=int,
         default=0,
         help="a flat amount of gp to add to the total",
+    )
+    parser.add_argument(
+        "-d",
+        "--detailed",
+        action="store_true",
+        help="show more information about the items than usual"
     )
     parser.add_argument(
         "-f",
@@ -734,7 +742,7 @@ def entry_point():
         sys.exit(0)
 
     if os.path.isfile(args.input) and args.input.endswith(".txt"):
-        console_entry_point(args.input, args.level, args.currency, args.no_conversion)
+        console_entry_point(args.input, args.level, args.currency, args.detailed, args.no_conversion)
         sys.exit(0)
     else:
         print("Please input a valid text file or use the -i option")
