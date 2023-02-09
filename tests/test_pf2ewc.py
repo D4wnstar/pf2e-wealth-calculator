@@ -209,7 +209,7 @@ def test_parse_restricted(item_name, amount, category, item_info):
             1,
             pf.ItemInfo(
                 "silver maul (low-grade)",
-                pf.Money(gp=40),
+                pf.Money(gp=48),
                 "weapons",
                 "base weapons",
                 2,
@@ -223,7 +223,7 @@ def test_parse_restricted(item_name, amount, category, item_info):
             1,
             pf.ItemInfo(
                 "noqual meteor hammer (standard-grade)",
-                pf.Money(gp=1600),
+                pf.Money(gp=1920),
                 "weapons",
                 "base weapons",
                 12,
@@ -237,7 +237,7 @@ def test_parse_restricted(item_name, amount, category, item_info):
             1,
             pf.ItemInfo(
                 "cold iron naginata (low-grade)",
-                pf.Money(gp=40),
+                pf.Money(gp=48),
                 "weapons",
                 "base weapons",
                 2,
@@ -251,7 +251,7 @@ def test_parse_restricted(item_name, amount, category, item_info):
             1,
             pf.ItemInfo(
                 "sovereign steel war lance (high-grade)",
-                pf.Money(gp=32000),
+                pf.Money(gp=38400),
                 "weapons",
                 "base weapons",
                 19,
@@ -265,7 +265,7 @@ def test_parse_restricted(item_name, amount, category, item_info):
             1,
             pf.ItemInfo(
                 "silver breastplate (low-grade)",
-                pf.Money(gp=140),
+                pf.Money(gp=168),
                 "armor",
                 "base armor",
                 5,
@@ -279,7 +279,7 @@ def test_parse_restricted(item_name, amount, category, item_info):
             1,
             pf.ItemInfo(
                 "adamantine full plate (high-grade)",
-                pf.Money(gp=32000),
+                pf.Money(gp=44800),
                 "armor",
                 "base armor",
                 19,
@@ -342,6 +342,19 @@ def test_parse_restricted(item_name, amount, category, item_info):
                 1,
             ),
         ),
+        (
+            "darkwood earplugs standard",
+            1,
+            pf.ItemInfo(
+                "darkwood earplugs (standard-grade)",
+                pf.Money(gp=350),
+                "adventuring gear",
+                "none",
+                8,
+                "uncommon",
+                0
+            )
+        )
     ],
 )
 def test_parse_precious(item_name, amount, item_info):
@@ -491,7 +504,7 @@ def test_parse_precious(item_name, amount, item_info):
             1,
             pf.ItemInfo(
                 "+2 greater resilient bitter greater shadow djezet scale mail (standard-grade)",
-                pf.Money(gp=7085),
+                pf.Money(gp=7445),
                 "armor",
                 "base armor",
                 14,

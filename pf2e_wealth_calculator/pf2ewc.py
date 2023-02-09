@@ -210,28 +210,42 @@ def parse_database(
         item_price = get_price(item_row["price"].item(), amount)
     else:
         item_name = f"{material} {item_name} {grade}"
-        # Convert category to a code-legible string
+        # Convert category to a AoN-legible name
         categories = {
             "weapons": "weapon",
             "armor": "armor",
             "shields": "shield",
-            "materials": "object",
-            "adventuring gear": "object"
-            # TODO: Might need to add more
         }
-        category = (
-            categories[item_category] if "buckler" not in item_name else "buckler"
-        )
+
+        if "buckler" in item_name:
+            # Bucklers are priced differently than other shields
+            category = "buckler"
+        elif item_category in categories.keys():
+            category = categories[item_category]
+        else:
+            # If it's not a weapon, an armor set or a shield, it's a generic object
+            category = "object"
+        
         material_name = f"{material} {category} {grade}"
+        material_row = df[df["name"] == material_name]
 
         # Add the price of the precious material
-        item_price = get_price(df[df["name"] == material_name]["price"].item(), amount)
+        item_price = get_price(material_row["price"].item(), amount)
+        # Add the extra price based on bulk
+        # Formula: price of precious item + 10% of price * Bulk (for weapons and armor)
+        #          price of precious item * Bulk (for objects)
+        #          No additions for shields and bucklers
+        if type(item_bulk) is int and category in ("weapon", "armor"):
+            item_price.gp += item_price.gp // 10 * item_bulk
+        elif category == "object":
+            multiplier = 1 if type(item_bulk) is str and "L" in item_bulk else int(item_bulk)
+            item_price = item_price * multiplier if multiplier > 0 else item_price
 
         # Materials have their own level and rarity, pick the highest ones
-        material_level = df[df["name"] == material_name]["level"].item()
+        material_level = material_row["level"].item()
         item_level = material_level if material_level > item_level else item_level
 
-        material_rarity = df[df["name"] == material_name]["rarity"].item()
+        material_rarity = material_row["rarity"].item()
         item_rarity = get_higher_rarity(material_rarity, item_rarity)
 
     return ItemInfo(
