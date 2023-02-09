@@ -225,7 +225,7 @@ def parse_database(
         else:
             # If it's not a weapon, an armor set or a shield, it's a generic object
             category = "object"
-        
+
         material_name = f"{material} {category} {grade}"
         material_row = df[df["name"] == material_name]
 
@@ -238,7 +238,9 @@ def parse_database(
         if type(item_bulk) is int and category in ("weapon", "armor"):
             item_price.gp += item_price.gp // 10 * item_bulk
         elif category == "object":
-            multiplier = 1 if type(item_bulk) is str and "L" in item_bulk else int(item_bulk)
+            multiplier = (
+                1 if type(item_bulk) is str and "L" in item_bulk else int(item_bulk)
+            )
             item_price = item_price * multiplier if multiplier > 0 else item_price
 
         # Materials have their own level and rarity, pick the highest ones
@@ -612,6 +614,7 @@ def console_entry_point(input_file, level, currency, detailed, noconversion):
 
     print()
 
+
 def find_single_item(item_name: str):
     """Fetches and prints information on a single item instead of a table."""
 
@@ -678,7 +681,7 @@ def entry_point():
         "-d",
         "--detailed",
         action="store_true",
-        help="show more information about the items than usual"
+        help="show more information about the items than usual",
     )
     parser.add_argument(
         "-f",
@@ -756,7 +759,9 @@ def entry_point():
         sys.exit(0)
 
     if os.path.isfile(args.input) and args.input.endswith(".txt"):
-        console_entry_point(args.input, args.level, args.currency, args.detailed, args.no_conversion)
+        console_entry_point(
+            args.input, args.level, args.currency, args.detailed, args.no_conversion
+        )
         sys.exit(0)
     else:
         print("Please input a valid text file or use the -i option")

@@ -129,9 +129,8 @@ Rarities:
 ## Known issues
 
 - Custom scrolls and wands are not supported. However, since their price only varies with spell level, you can use their general item names instead. For scrolls it's `nth-Level Scroll` and for wands it's `Magic Wand (nth-Level Spell)`, where "nth" is the spell's level (e.g. 1st, 2nd, etc.). For example, instead of `scroll of lightning bolt`, use `3rd-level scroll` and instead of `wand of see invisibility`, use `magic wand (2nd-level spell)`.
-- Precious material price calculation does not currently take item Bulk into account. This means that the actual cost of the item is often underestimated by 10% or 20%.
 - There is currently no way to apply runes to anything that doesn't use potency runes. This means accessories and shields with runes are currently not supported. To get around this, you can add the runes as separate items, which would give the same total value at the cost of not getting the correct item level and rarity.
 
 ## License
 
-This project is released under the [GNU GPLv3 License](https://github.com/D4wnstar/pf2e-wealth-calculator/blob/master/LICENSE). The data this program parses through is taken from the [Archives of Nethys](https://2e.aonprd.com/) and is available for use under the [Open Game License v1.0a](https://github.com/D4wnstar/pf2e-wealth-calculator/blob/master/OGL).
+This project is released under the [GNU GPLv3 License](https://github.com/D4wnstar/pf2e-wealth-calculator/blob/master/LICENSE). The data this program uses for its calculations is taken from the [Archives of Nethys](https://2e.aonprd.com/) and is available for use under the [Open Game License v1.0a](https://github.com/D4wnstar/pf2e-wealth-calculator/blob/master/OGL).

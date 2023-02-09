@@ -352,9 +352,9 @@ def test_parse_restricted(item_name, amount, category, item_info):
                 "none",
                 8,
                 "uncommon",
-                0
-            )
-        )
+                0,
+            ),
+        ),
     ],
 )
 def test_parse_precious(item_name, amount, item_info):
