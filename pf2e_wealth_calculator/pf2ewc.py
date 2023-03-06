@@ -463,6 +463,11 @@ def console_entry_point(input_file, level, currency, detailed, noconversion):
 
     # User-defined loot
     loot = pd.read_csv(input_file, names=["name", "amount"])
+    # Skip rows starting in #
+    for i, row in enumerate(loot["name"]):
+        if "#" in row:
+            loot.drop(i, axis=0, inplace=True)
+    
     loot["name"] = loot["name"].apply(lambda name: name.lower())
     # Assume no amount means 1
     loot["amount"].fillna(1, inplace=True)
