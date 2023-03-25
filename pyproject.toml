@@ -22,7 +22,7 @@ black = "^22.6"
 tox = "^4.4.4"
 
 [tool.poetry.scripts]
-pf2ewc = "pf2e_wealth_calculator.pf2ewc:entry_point"
+pf2ewc = "pf2e_wealth_calculator.entry_point:entry_point"
 
 [build-system]
 requires = ["poetry-core"]

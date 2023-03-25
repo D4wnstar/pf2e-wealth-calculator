@@ -6,12 +6,13 @@ A simple tool to quickly get information on large batches of items, runes and pr
 ## Features
 
  - Quickly get stats for a single item directly from the command line or add all of your loot to a file and have it process everything at once.
+ - Supports input from multiple files, so you can keep everything organized.
  - Automatically calculate the price, level and rarity of items made from precious materials or with runes - or both!
  - Searches every item present on the Archives of Nethys - all 4000+ of them.
 
 ## Prerequisites
 
-- Python 3.9 or above
+- Python 3.9 or above (tested on 3.9, 3.10 and 3.11)
 
 ## Installation
 
@@ -34,55 +35,72 @@ To pass a single item, simply run
 pf2ewc -i "your item here"
 ```
 
-Quotation marks can be omitted if the item is only one word.
+Quotation marks can be omitted if the item's name is only one word long.
 
-Alternatively, create and write a text file with two comma-separated columns.
+Alternatively, create and write a text file where you list all of your items. On each line, write the name of the item that you want (using the same name you find on the Archives of Nethys). Next, add a comma followed by how many of this item you need. You can omit it in case you only need one.
 
-In the first column, write the names of the items.
-
-In the second, write how many of each item you want. This can be omitted, in which case the default is 1.
+> Tip: Don't worry about upper- and lowercase, they don't make a difference.
 
 For example:
 
 ```
-Longsword, 1
+# Weapons and armor
++1 striking longsword
+Cold iron breastplate (low-grade)
+
+# Gear
 Sunrod, 5
 Lantern (Hooded), 2
+Bedroll
+
+# Currency and expensive stuff
 12gp
+*35gp
 ```
 
 Then open a terminal in the same folder as the text file and run
 
 ```
-pf2ewc your_text_file.txt
+pf2ewc your_text_file_here.txt
 ```
 
-Put quotation marks around the file name if there are any spaces in it, e.g. `pf2ewc "dungeon loot.txt"`. If you used the previous items, it should produce the following output:
+> Tip: Put quotation marks around the file name if there are any spaces in it, e.g. `pf2ewc "dungeon loot.txt"`.
+
+If you used the previous items, it should produce the following output:
 
 ```
 Total value (converted in gp):
-  - 0 cp
+  - 2 cp
   - 4 sp
-  - 29 gp
+  - 332 gp
 
 Of which:
-  - Items: 17 gp
+  - Items: 285 gp
+  - Art objects: 35 gp
   - Currency: 12 gp
 ```
+
+Let's unpack what's going on here. Firstly, every line with a `#` is ignored, so you can write whatever you want in them. They're useful to keep your loot files nice and tidy, so use them as you see fit.
+
+Next, the weapon has runes while the armor is made of low-grade cold iron. As you can see, the script automatically calculates how much they're worth without you having to tell it anything else!
+
+Then, in "Gear" section, some items are counted multiple times. This makes it easy to add any amount of items and check whether you are giving too much or too little.
+
+Finally, in the "Currency and expensive stuff" section, you can see that you can add plain currency instead of any specific item. You may notice some weird notation on the `*34gp` line. The asterisk before the number means that it'll be considered as an art object instead of simple currency and categorize accordingly. This is useful whenever you want to give your player some expensive item to be sold instead of coins and want to make sure you keep things separate.
 
 You can use the `-l` or `--level` option followed by the party's level or two levels in the format X-Y (e.g. 2-5) to compare the items' total value to the one PCs are supposed to come across throughout the level or range of levels you input. These expected values come from the Treasure by Level table on Page 508 of the Core Rulebook (which you can find [here](https://2e.aonprd.com/Rules.aspx?ID=581)).
 
 For instance, running
 
 ```
-pf2ewc your_text_file.txt -l 1
+pf2ewc your_text_file_here.txt -l 2
 ```
 
 would add the following lines to the previous output:
 
 ```
 Difference:
-  - 146 gp too little (Expected 175 gp)
+  - 32 gp too much (Expected 300 gp)
 ```
 
 If you want a detailed breakdown of what you're giving to your players, then you can use the `-d` or `--detailed` option, which counts the levels, categories, subcategories and rarities of all of the items you input.
@@ -91,23 +109,30 @@ Using the same items as before with the `-d` option would add these lines to the
 
 ```
 Levels:
-  - Level 0: 4
+  - Level 4: 1
+  - Level 5: 1
   - Level 1: 5
+  - Level 0: 5
 
 Categories:
   - Weapons: 1
+  - Armor: 1
   - Alchemical items: 5
-  - Adventuring gear: 2
+  - Adventuring gear: 3
   - Currency: 1
+  - Art objects: 1
 
 Subcategories:
   - Base weapons: 1
+  - Base armor: 1
   - Alchemical tools: 5
-  - None: 3
+  - None: 5
 
 Rarities:
-  - Common: 9
+  - Common: 12
 ```
+
+Note that items without a level, like currency, are currently considered as being level 0.
 
 ## Formatting guidelines
 
@@ -118,7 +143,8 @@ Rarities:
 - You can input a weapon or armor with runes etched into it and the script will automatically calculate the price, level and rarity of the item. The calculator is built with standard notation in mind, meaning it should start with the potency rune (i.e. the +1/+2/+3), followed by the striking and potency runes (if any), followed by the item itself. For instance, `+1 striking warhammer` is fine, as is `+2 greater striking frost extending halberd`. Runes ordered in a different manner usually work so long they all precede the base item, but this syntax may lead to unexpected behaviour as the script is not built with it in mind.
 - You can also input weapons, armor and items made of a precious material. As with runes, the price, level and rarity will be calculated automatically. Write the item name as you would usually: this means the material goes first, then the base item and finally the grade of the material. For example, `silver dagger (low-grade)` is correct. To cut down on typing, the grade really just needs to include "low", "standard" or "high" and it'll be treated the same way; `silver dagger low` will work just fine. One thing to note is that most materials can only be found at higher grades. This script _does not_ check if the material/grade pair is valid and _will_ crash if it's not.
 - You can combine runes and materials too! Just make sure that _all_ of the runes are placed before the material and the item, otherwise it won't work. Otherwise, follow the syntax from the previous two points. For example, `+1 striking ghost touch mithral flail (standard-grade)` is correct.
-- Currency is a valid item to input, which is useful in case you want to make your players find a bunch of plain old coins in a dungeon, for instance. The syntax is just what you'd expect: the number of coins followed by the coin type. `12 gp` and `520cp` are both fine. Note that platinum pieces ("pp") are not supported.
+- Currency is a valid item to input, which is useful in case you want to make your players find a bunch of plain old coins in a dungeon, for instance. The syntax is just what you'd expect: the number of coins followed by the coin type. `12 gp` and `520cp` are both fine. Note that platinum pieces ("pp") are not supported. If you prepend a currency with an asterisk like `*100gp`, it'll be counted as an art object instead. This allows you to divide items that are only there to be sold for currency from plain currency. This is especially useful if the art objects are hard to sell and therefore don't represent "immediate cash", so to speak.
+- You can start a line with a `#` character to comment the line. This means it won't be processed by the script and is useful to mark down where the items come from.
 
 ## Options
 

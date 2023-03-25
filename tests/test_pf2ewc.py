@@ -61,7 +61,7 @@ import pytest
             1,
             pf.ItemInfo(
                 "25 gp",
-                pf.Money(gp=25, origin="currency"),
+                pf.Money(gp=25, origin=pf.Origins.CURRENCY),
                 "currency",
                 "none",
                 0,
@@ -74,8 +74,35 @@ import pytest
             4,
             pf.ItemInfo(
                 "12 sp",
-                pf.Money(sp=48, origin="currency"),
+                pf.Money(sp=48, origin=pf.Origins.CURRENCY),
                 "currency",
+                "none",
+                0,
+                "common",
+                0,
+            ),
+        ),
+        # Art objects
+        (
+            "*200 gp",
+            1,
+            pf.ItemInfo(
+                "200 gp",
+                pf.Money(gp=200, origin=pf.Origins.ART_OBJECT),
+                "art object",
+                "none",
+                0,
+                "common",
+                0,
+            ),
+        ),
+        (
+            "*12,300 sp",
+            1,
+            pf.ItemInfo(
+                "12,300 sp",
+                pf.Money(sp=12300, origin=pf.Origins.ART_OBJECT),
+                "art object",
                 "none",
                 0,
                 "common",
