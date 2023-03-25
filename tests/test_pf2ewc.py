@@ -89,7 +89,7 @@ import pytest
             pf.ItemInfo(
                 "200 gp",
                 pf.Money(gp=200, origin=pf.Origins.ART_OBJECT),
-                "art object",
+                "art objects",
                 "none",
                 0,
                 "common",
@@ -102,7 +102,7 @@ import pytest
             pf.ItemInfo(
                 "12,300 sp",
                 pf.Money(sp=12300, origin=pf.Origins.ART_OBJECT),
-                "art object",
+                "art objects",
                 "none",
                 0,
                 "common",

@@ -8,13 +8,15 @@ def _pathfinder(path):
 
 
 # List of all items
-itemlist = pd.read_csv(_pathfinder("tables/PF2eItemList.csv"), dtype={"Level": int})
+itemlist: pd.DataFrame = pd.read_csv(
+    _pathfinder("tables/PF2eItemList.csv"), dtype={"Level": int}
+)
 # Rune name translation table
-rune_replacer = pd.read_csv(
+rune_replacer: pd.DataFrame = pd.read_csv(
     _pathfinder("tables/rune_replacer.csv"), names=["name", "replacer"]
 )
 # Treasure by level table
-tbl = pd.read_csv(_pathfinder("tables/treasurebylevel.csv"))
+tbl: pd.DataFrame = pd.read_csv(_pathfinder("tables/treasurebylevel.csv"))
 # Precious materials
 with open(_pathfinder("tables/materials.csv"), "r") as _mats:
     materials = _mats.readlines()
@@ -27,7 +29,8 @@ itemlist["subcategory"].fillna("None", inplace=True)
 for col in ["name", "rarity", "category", "subcategory"]:
     itemlist[col] = itemlist[col].apply(lambda name: name.lower())
 
-# Replace NaN bulk with zero bulk
+# Replace NaN price and bulk with zero
+itemlist["price"].fillna("0 gp", inplace=True)
 itemlist["bulk"].fillna("0", inplace=True)
 
 # Fill NaN values with empty strings

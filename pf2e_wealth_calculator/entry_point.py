@@ -1,4 +1,8 @@
-from pf2e_wealth_calculator.pf2ewc import find_single_item, console_entry_point
+from pf2e_wealth_calculator.pf2ewc import (
+    find_single_item,
+    console_entry_point,
+    generate_random_items,
+)
 
 import argparse
 import textwrap
@@ -53,6 +57,9 @@ def entry_point():
         "--no-conversion",
         action="store_true",
         help="prevent conversion of coins into gp",
+    )
+    parser.add_argument(
+        "-r", "--random", type=int, help="randomly pick items within a range of levels"
     )
     args = parser.parse_args()
 
@@ -121,6 +128,14 @@ def entry_point():
         find_single_item(args.item)
         sys.exit(0)
 
+    if args.random:
+        if args.level:
+            generate_random_items(args.random, args.level)
+        else:
+            generate_random_items(args.random)
+
+        sys.exit(0)
+
     if all(os.path.isfile(file) for file in args.input) and all(
         file.endswith(".txt") for file in args.input
     ):
@@ -129,7 +144,7 @@ def entry_point():
         )
         sys.exit(0)
     else:
-        print("Please input a valid text file or use the -i option")
+        print("Please input a valid text file or use the -i or -r options")
         sys.exit(1)
 
 

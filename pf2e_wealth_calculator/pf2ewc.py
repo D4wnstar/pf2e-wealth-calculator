@@ -2,12 +2,14 @@ from pf2e_wealth_calculator.dataframes import itemlist, rune_replacer, tbl, mate
 from pf2e_wealth_calculator.structs import *
 
 import pandas as pd
+import numpy as np
+from tabulate import tabulate
+
 import re
 from difflib import get_close_matches
 
 import sys
 import textwrap
-
 import typing  # for backwards compatibility to python 3.9
 
 
@@ -97,6 +99,7 @@ def parse_database(
         )
 
     # If category is restricted, check only items from that category
+    # TODO: This can probably be simplified
     if restrict_cat:
         filtered_list = itemlist.set_index("category")
         filtered_list = filtered_list.filter(like=restrict_cat, axis=0)
@@ -444,8 +447,8 @@ def get_loot_stats(
             rarities[curr_item.rarity] = amount
 
 
-def manage_input_level(level) -> int:
-    """Find the amount of gold expected by the Treasure by Level table for the range of levels provided."""
+def convert_input_level(level) -> typing.Union[int, tuple[int, int]]:
+    """Transform the user input level into a integer or a tuple of two integers."""
     try:
         level = [int(x) for x in level.split("-")]
     except ValueError:
@@ -456,26 +459,33 @@ def manage_input_level(level) -> int:
 
     if len(level) == 1:
         level = level[0]
-    elif len(level) > 2:
+    elif len(level) == 2:
+        level = tuple(level)
+    else:
         print(
             "Invalid level type\nPlease only insert an integer or a range with the syntax X-Y"
         )
         sys.exit(1)
 
-    if type(level) is list:
+    return level
+
+
+def get_value_from_level(level) -> int:
+    """Find the amount of gold expected by the Treasure by Level table for the range of levels provided."""
+    if type(level) is tuple:
         if 0 < level[0] <= 20 and 0 < level[1] <= 20:
-            # Get total value from the TBL table
             total_value = tbl["Total Value"][min(level) - 1 : max(level)].sum()
         else:
             print("Please only insert levels between 1 and 20")
             sys.exit(1)
+
     elif type(level) is int:
         if 0 < level <= 20:
-            # Get total value from the TBL table
             total_value = tbl.at[level - 1, "Total Value"]
         else:
             print("Please only insert a level between 1 and 20")
             sys.exit(1)
+
     else:
         print(
             "Invalid level type\nPlease only insert an integer or a range with the syntax X-Y"
@@ -487,7 +497,7 @@ def manage_input_level(level) -> int:
 
 def console_entry_point(
     input_files: list[str],
-    level: str,
+    level_str: str,
     currency: int,
     detailed: bool,
     noconversion: bool,
@@ -509,8 +519,9 @@ def console_entry_point(
 
         get_loot_stats(loot, money, levels, categories, subcategories, rarities)
 
-        if level:
-            total_value = manage_input_level(level)
+        if level_str:
+            level = convert_input_level(level_str)
+            total_value = get_value_from_level(level)
 
     money[Origins.CURRENCY] += Money(gp=currency, origin=Origins.CURRENCY)
 
@@ -612,3 +623,36 @@ def find_single_item(item_name: str):
         """
         )
     )
+
+
+def generate_random_items(n_of_items: int, level_str: str = "0-100"):
+    level = convert_input_level(level_str)
+
+    if type(level) is int:
+        rand_ids = np.random.choice(
+            itemlist[itemlist["level"] == level].index, n_of_items
+        )
+        rand_items = itemlist.iloc[rand_ids]
+    elif type(level) is tuple:
+        rand_ids = np.random.choice(
+            itemlist[
+                (itemlist["level"] >= level[0]) & (itemlist["level"] <= level[1])
+            ].index,
+            n_of_items,
+        )
+        rand_items = itemlist.iloc[rand_ids]
+    else:
+        sys.exit(1)
+
+    rand_items = rand_items.applymap(lambda word : word.capitalize() if type(word) is str else word)
+
+    print()
+    print(
+        tabulate(
+            rand_items, # type: ignore
+            headers=rand_items.columns.str.capitalize(), # type: ignore
+            showindex=False,
+            tablefmt="rounded_outline"
+        )
+    )
+    print()
