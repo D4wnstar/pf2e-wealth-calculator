@@ -9,6 +9,7 @@ A simple tool to quickly get information on large batches of items, runes and pr
  - Supports input from multiple files, so you can keep everything organized.
  - Automatically calculate the price, level and rarity of items made from precious materials or with runes - or both!
  - Searches every item present on the Archives of Nethys - all 4000+ of them.
+ - Randomly generate items on the fly for marketplaces or encounters.
 
 ## Prerequisites
 
@@ -24,6 +25,7 @@ A simple tool to quickly get information on large batches of items, runes and pr
 - Prebuilt Windows Executable
     - If you are on Windows and don't want to install Python, you can download the executable file directly from the [Releases Tab](https://github.com/D4wnstar/pf2e-wealth-calculator/releases).
     - If you choose this method, don't double click on the executable file to use it! It won't work. Instead, place it in a folder of your preference, then open a terminal in that folder (in Windows 11 you can just right click on the folder and press "Open in Terminal"). Follow the same instructions under Usage, except you change every `pf2ewc` to the name of the executable prefixed by `.\`. For example, if you downloaded `pf2ewc-0.1.0.exe`, you can use `.\pf2ewc-0.1.0.exe`
+    - Note that the executable takes noticeably longer to run than the Python version, so if the long startup times bother you, consider installing from Python directly.
 
 ## Usage
 
@@ -158,7 +160,11 @@ Note that items without a level, like currency, are currently considered as bein
 
 `-n` or `--no-conversion` prevents coins from being converted to gp automatically (some calculations use gp only, so expect values to be slightly different from what you'd expect).
 
-`-i` or `--item` followed by the name of an item allows you to run the script without creating a file. If the item name is composed of multiple words, you must put it in quotation marks, like `-i "tengu gale blade"`. Ignores other options.
+`-i` or `--item` followed by the name of an item allows you to run the script without creating a file. If the item name is composed of multiple words, you must put it in quotation marks, like `-i "tengu gale blade"`.
+
+`-r` or `--random` followed by a number randomly generates that many items, picking them without restraint from every item in the game. You can follow this option with the `-l` option to restrict random generation to that level or range of levels only.
+
+`--tbl` shows the Treasure by Level table from page 508 of the Core Rulebook.
 
 ## Known exceptions
 

@@ -560,7 +560,7 @@ def console_entry_point(
         )
     )
 
-    if level:
+    if level_str:
         print("\nDifference:")
         if total_value - money[Origins.TOTAL].gp < 0:
             print(

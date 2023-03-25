@@ -3,6 +3,9 @@ from pf2e_wealth_calculator.pf2ewc import (
     console_entry_point,
     generate_random_items,
 )
+from pf2e_wealth_calculator.dataframes import tbl
+
+from tabulate import tabulate
 
 import argparse
 import textwrap
@@ -59,7 +62,15 @@ def entry_point():
         help="prevent conversion of coins into gp",
     )
     parser.add_argument(
-        "-r", "--random", type=int, help="randomly pick items within a range of levels"
+        "-r",
+        "--random",
+        type=int,
+        help="randomly pick items within a range of levels"
+    )
+    parser.add_argument(
+        "--tbl",
+        action="store_true",
+        help="print the Treasure by Level table and exit"
     )
     args = parser.parse_args()
 
@@ -120,6 +131,17 @@ def entry_point():
             The values are taken from the Treasure by Level table on page 508 of the Core Rulebook
             On Archives of Nethys: https://2e.aonprd.com/Rules.aspx?ID=581\
             """
+            )
+        )
+        sys.exit(0)
+
+    if args.tbl:
+        print(
+            tabulate(
+                tbl, # type: ignore
+                headers=tbl.columns, # type: ignore
+                showindex=False,
+                tablefmt="rounded_outline",
             )
         )
         sys.exit(0)
