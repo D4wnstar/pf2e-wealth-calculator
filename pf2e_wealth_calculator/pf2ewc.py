@@ -644,15 +644,17 @@ def generate_random_items(n_of_items: int, level_str: str = "0-100"):
     else:
         sys.exit(1)
 
-    rand_items = rand_items.applymap(lambda word : word.capitalize() if type(word) is str else word)
+    rand_items = rand_items.applymap(
+        lambda word: word.capitalize() if type(word) is str else word
+    )
 
     print()
     print(
         tabulate(
-            rand_items, # type: ignore
-            headers=rand_items.columns.str.capitalize(), # type: ignore
+            rand_items,  # type: ignore
+            headers=rand_items.columns.str.capitalize(),  # type: ignore
             showindex=False,
-            tablefmt="rounded_outline"
+            tablefmt="rounded_outline",
         )
     )
     print()
