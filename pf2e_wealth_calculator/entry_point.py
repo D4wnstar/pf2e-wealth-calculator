@@ -67,11 +67,18 @@ def entry_point():
         type=int,
         help="randomly pick the input number of items; use -l to restrict the range of levels",
     )
-    parser.add_argument(
+    output_mutex_group = parser.add_mutually_exclusive_group()
+    output_mutex_group.add_argument(
         "-o",
         "--output",
         type=str,
         help="specify a file to output the results of the -r option to",
+    )
+    output_mutex_group.add_argument(
+        "-O",
+        "--overwrite",
+        type=str,
+        help="like -o, but automatically creates folders and overwrites files",
     )
     parser.add_argument(
         "--tbl",
@@ -157,8 +164,14 @@ def entry_point():
         sys.exit(0)
 
     if args.random:
-        if args.level:
+        if args.level and args.overwrite:
+            generate_random_items(
+                args.random, args.level, filepath=args.overwrite, overwrite=True
+            )
+        elif args.level:
             generate_random_items(args.random, args.level, filepath=args.output)
+        elif args.overwrite:
+            generate_random_items(args.random, filepath=args.overwrite, overwrite=True)
         else:
             generate_random_items(args.random, filepath=args.output)
 

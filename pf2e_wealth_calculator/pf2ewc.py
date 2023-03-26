@@ -655,29 +655,34 @@ def get_path_state(filepath: str) -> tuple[PathState, str]:
     return PathState.VALID, partial_path
 
 
-def check_path_validity(filepath: str):
+def check_path_validity(filepath: str, overwrite: bool):
     path_state, return_path = get_path_state(filepath)
     while path_state != PathState.VALID:
+        # If the directory doesn't exist, create it automatically if overwrite is true, otherwise ask the user
         if path_state == PathState.NONEXISTANT_DIR:
-            if (
-                input(
+            create_folder_flag = "y" if overwrite else input(
                     f"[WARNING] The folder '{return_path}' doesn't exist. Would you like to create it? (y/[n]) ",
                 )
-                == "y"
-            ):
+
+            if create_folder_flag == "y":
                 os.mkdir(return_path)
                 path_state, return_path = get_path_state(filepath)
                 continue
             else:
                 sys.exit(1)
 
+        # If a file of that name exists, overwrite it if asked, otherwise stop
         elif path_state == PathState.EXISTING_FILE:
-            print(
-                f"[ERROR] The file {return_path} already exists. Please select a different filename.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+            if overwrite:
+                break
+            else:
+                print(
+                    f"[ERROR] The file {return_path} already exists. Please select a different filename.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
 
+        # If the extension is wrong, stop
         elif path_state == PathState.WRONG_EXTENSION:
             print(
                 f"[ERROR] The file {return_path} isn't a text file. Please specify a .txt file.",
@@ -687,7 +692,10 @@ def check_path_validity(filepath: str):
 
 
 def generate_random_items(
-    n_of_items: int, level_str: str = "0-100", filepath: typing.Union[str, None] = None
+    n_of_items: int,
+    level_str: str = "0-100",
+    filepath: typing.Union[str, None] = None,
+    overwrite: bool = False,
 ):
     """Randomly generate the specified number of items from the general itemlist. Currently uses a uniform distribution."""
     level = convert_input_level(level_str)
@@ -710,7 +718,7 @@ def generate_random_items(
     rand_items.columns = rand_items.columns.str.capitalize()
 
     if filepath:
-        check_path_validity(filepath)
+        check_path_validity(filepath, overwrite)
         rand_items.to_csv(filepath, index=False)
     else:
         print()
