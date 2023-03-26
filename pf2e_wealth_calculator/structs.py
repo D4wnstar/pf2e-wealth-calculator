@@ -85,3 +85,10 @@ class ItemInfo:
     level: int = 0
     rarity: str = "common"
     bulk: typing.Union[int, str] = 0
+
+
+class PathState(Enum):
+    VALID = 0
+    NONEXISTANT_DIR = 1
+    EXISTING_FILE = 2
+    WRONG_EXTENSION = 3

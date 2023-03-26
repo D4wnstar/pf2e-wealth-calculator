@@ -65,17 +65,23 @@ def entry_point():
         "-r",
         "--random",
         type=int,
-        help="randomly pick items within a range of levels"
+        help="randomly pick the input number of items; use -l to restrict the range of levels",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        help="specify a file to output the results of the -r option to",
     )
     parser.add_argument(
         "--tbl",
         action="store_true",
-        help="print the Treasure by Level table and exit"
+        help="print the Treasure by Level table from the Core Rulebook and exit",
     )
     args = parser.parse_args()
 
     if args.format:
-        # TODO: Add more info in the formatting instructions
+        # TODO: Keep this string synced with the README
         print(
             textwrap.dedent(
                 """\
@@ -138,8 +144,8 @@ def entry_point():
     if args.tbl:
         print(
             tabulate(
-                tbl, # type: ignore
-                headers=tbl.columns, # type: ignore
+                tbl,  # type: ignore
+                headers=tbl.columns,  # type: ignore
                 showindex=False,
                 tablefmt="rounded_outline",
             )
@@ -152,9 +158,9 @@ def entry_point():
 
     if args.random:
         if args.level:
-            generate_random_items(args.random, args.level)
+            generate_random_items(args.random, args.level, filepath=args.output)
         else:
-            generate_random_items(args.random)
+            generate_random_items(args.random, filepath=args.output)
 
         sys.exit(0)
 

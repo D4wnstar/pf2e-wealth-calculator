@@ -8,6 +8,7 @@ from tabulate import tabulate
 import re
 from difflib import get_close_matches
 
+import os
 import sys
 import textwrap
 import typing  # for backwards compatibility to python 3.9
@@ -502,7 +503,7 @@ def console_entry_point(
     detailed: bool,
     noconversion: bool,
 ):
-    """Primary entry point for the script."""
+    """Console entry point for the script."""
 
     money = {
         Origins.ITEM: Money(origin=Origins.ITEM),
@@ -625,36 +626,100 @@ def find_single_item(item_name: str):
     )
 
 
-def generate_random_items(n_of_items: int, level_str: str = "0-100"):
+def get_path_state(filepath: str) -> tuple[PathState, str]:
+    """
+    Check if the given filepath:
+
+    - points to an existing folder
+    - doesn't point to an existing file
+    - the file is a text file
+    """
+
+    split_path = filepath.split(os.sep)
+    partial_path = ""
+    for i, path_elem in enumerate(split_path):
+        if path_elem == "":
+            continue
+        partial_path = os.path.join(partial_path, path_elem)
+
+        if i < len(split_path) - 1 and not os.path.isdir(partial_path):
+            return PathState.NONEXISTANT_DIR, partial_path
+
+        elif i >= len(split_path) - 1:
+            if os.path.isfile(partial_path):
+                return PathState.EXISTING_FILE, partial_path
+
+            if os.path.splitext(partial_path)[1] != ".txt":
+                return PathState.WRONG_EXTENSION, partial_path
+
+    return PathState.VALID, partial_path
+
+
+def check_path_validity(filepath: str):
+    path_state, return_path = get_path_state(filepath)
+    while path_state != PathState.VALID:
+        if path_state == PathState.NONEXISTANT_DIR:
+            if (
+                input(
+                    f"[WARNING] The folder '{return_path}' doesn't exist. Would you like to create it? (y/[n]) ",
+                )
+                == "y"
+            ):
+                os.mkdir(return_path)
+                path_state, return_path = get_path_state(filepath)
+                continue
+            else:
+                sys.exit(1)
+
+        elif path_state == PathState.EXISTING_FILE:
+            print(
+                f"[ERROR] The file {return_path} already exists. Please select a different filename.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        elif path_state == PathState.WRONG_EXTENSION:
+            print(
+                f"[ERROR] The file {return_path} isn't a text file. Please specify a .txt file.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+
+def generate_random_items(
+    n_of_items: int, level_str: str = "0-100", filepath: typing.Union[str, None] = None
+):
+    """Randomly generate the specified number of items from the general itemlist. Currently uses a uniform distribution."""
     level = convert_input_level(level_str)
 
     if type(level) is int:
-        rand_ids = np.random.choice(
-            itemlist[itemlist["level"] == level].index, n_of_items
-        )
-        rand_items = itemlist.iloc[rand_ids]
+        filtered_list = itemlist[itemlist["level"] == level]
     elif type(level) is tuple:
-        rand_ids = np.random.choice(
-            itemlist[
-                (itemlist["level"] >= level[0]) & (itemlist["level"] <= level[1])
-            ].index,
-            n_of_items,
-        )
-        rand_items = itemlist.iloc[rand_ids]
+        filtered_list = itemlist[
+            (itemlist["level"] >= level[0]) & (itemlist["level"] <= level[1])
+        ]
     else:
         sys.exit(1)
 
+    # Randomly choose n indexes, then fetch the associated rows and capitalize everything
+    rand_ids = np.random.choice(filtered_list.index, n_of_items)
+    rand_items = itemlist.iloc[rand_ids]
     rand_items = rand_items.applymap(
         lambda word: word.capitalize() if type(word) is str else word
     )
+    rand_items.columns = rand_items.columns.str.capitalize()
 
-    print()
-    print(
-        tabulate(
-            rand_items,  # type: ignore
-            headers=rand_items.columns.str.capitalize(),  # type: ignore
-            showindex=False,
-            tablefmt="rounded_outline",
+    if filepath:
+        check_path_validity(filepath)
+        rand_items.to_csv(filepath, index=False)
+    else:
+        print()
+        print(
+            tabulate(
+                rand_items,  # type: ignore
+                headers=rand_items.columns,  # type: ignore
+                showindex=False,
+                tablefmt="rounded_outline",
+            )
         )
-    )
-    print()
+        print()
