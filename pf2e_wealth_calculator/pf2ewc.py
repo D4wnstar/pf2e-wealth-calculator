@@ -8,6 +8,7 @@ from tabulate import tabulate
 import re
 from difflib import get_close_matches
 
+import io
 import os
 import sys
 import textwrap
@@ -389,7 +390,7 @@ def get_price(price_str: str, amount: int = 1, origin: Origins = Origins.ITEM) -
         return Money()
 
 
-def process_loot_file(filepath: str) -> pd.DataFrame:
+def process_loot_file(filepath: typing.Union[str, io.StringIO]) -> pd.DataFrame:
     # User-defined loot
     loot = pd.read_csv(filepath, names=["name", "amount"])
     # Skip rows starting in #

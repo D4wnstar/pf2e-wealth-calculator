@@ -5,8 +5,6 @@ import os
 # Global file access
 def _pathfinder(path):
     return os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
-
-
 # List of all items
 itemlist: pd.DataFrame = pd.read_csv(
     _pathfinder("tables/PF2eItemList.csv"), dtype={"Level": int}

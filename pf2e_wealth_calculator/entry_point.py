@@ -4,6 +4,7 @@ from pf2e_wealth_calculator.pf2ewc import (
     generate_random_items,
 )
 from pf2e_wealth_calculator.dataframes import tbl
+from pf2e_wealth_calculator.gui import gui_entry_point
 
 from tabulate import tabulate
 
@@ -23,6 +24,12 @@ def entry_point():
         nargs="*",
         default="",
         help="the name of the text file containing the loot",
+    )
+    parser.add_argument(
+        "-g",
+        "--gui",
+        action="store_true",
+        help="open the graphical UI instead of using the command line"
     )
     parser.add_argument(
         "-i",
@@ -86,6 +93,10 @@ def entry_point():
         help="print the Treasure by Level table from the Core Rulebook and exit",
     )
     args = parser.parse_args()
+
+    if args.gui:
+        exit_code = gui_entry_point()
+        sys.exit(exit_code)
 
     if args.format:
         # TODO: Keep this string synced with the README

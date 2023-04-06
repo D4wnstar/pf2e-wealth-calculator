@@ -168,3 +168,4 @@ stuff.ipynb
 *.ps1
 aon_data
 *.ipynb
+# Remove ui/ folder before merging with master
