@@ -29,7 +29,7 @@ def entry_point():
         "-g",
         "--gui",
         action="store_true",
-        help="open the graphical UI instead of using the command line"
+        help="open the graphical UI instead of using the command line",
     )
     parser.add_argument(
         "-i",

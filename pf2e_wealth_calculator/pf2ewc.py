@@ -661,9 +661,13 @@ def check_path_validity(filepath: str, overwrite: bool):
     while path_state != PathState.VALID:
         # If the directory doesn't exist, create it automatically if overwrite is true, otherwise ask the user
         if path_state == PathState.NONEXISTANT_DIR:
-            create_folder_flag = "y" if overwrite else input(
+            create_folder_flag = (
+                "y"
+                if overwrite
+                else input(
                     f"[WARNING] The folder '{return_path}' doesn't exist. Would you like to create it? (y/[n]) ",
                 )
+            )
 
             if create_folder_flag == "y":
                 os.mkdir(return_path)
